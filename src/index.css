@@ -1,0 +1,43 @@
+@import "tailwindcss";
+
+@theme {
+  --color-massmutual-blue: #004B8D;
+  --color-massmutual-dark: #000000;
+  --color-massmutual-card: #09090b;
+  --color-massmutual-border: #27272a;
+  --color-massmutual-text: #f8fafc;
+  --color-massmutual-text-muted: #a1a1aa;
+  --color-accent-blue: #3b82f6;
+
+  --shadow-glow: 0 0 20px rgba(59, 130, 246, 0.15);
+  --shadow-glow-strong: 0 0 30px rgba(59, 130, 246, 0.3);
+}
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  background-color: var(--color-massmutual-dark);
+  color: var(--color-massmutual-text);
+  @apply antialiased;
+  font-family: 'Inter', sans-serif;
+}
+
+/* Custom Scrollbar for Dark Theme */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-massmutual-dark;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-zinc-800 rounded border border-black;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-zinc-700;
+}
