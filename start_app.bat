@@ -5,7 +5,9 @@ cd backend
 start "MassMutual Backend" cmd /k "npm run dev"
 cd ..
 
+cd frontend
 start "MassMutual Frontend" cmd /k "npm run dev"
+cd ..
 
 echo Application started!
 echo Backend: http://localhost:5000
