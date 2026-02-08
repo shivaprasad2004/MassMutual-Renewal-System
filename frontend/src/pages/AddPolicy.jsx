@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { FaArrowLeft } from 'react-icons/fa';
+import { motion } from 'framer-motion';
 
 const AddPolicy = () => {
   const navigate = useNavigate();
@@ -51,100 +52,105 @@ const AddPolicy = () => {
   };
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="max-w-3xl mx-auto"
+    >
       <button 
         onClick={() => navigate('/policies')} 
-        className="flex items-center text-zinc-400 hover:text-white mb-6 transition-colors"
+        className="flex items-center text-slate-400 hover:text-white mb-6 transition-colors"
       >
         <FaArrowLeft className="mr-2" /> Back to Policies
       </button>
 
-      <div className="bg-massmutual-card p-8 rounded-xl border border-massmutual-border">
-        <h2 className="text-2xl font-bold text-white mb-6 border-b border-massmutual-border pb-4">Create New Policy</h2>
+      <div className="glass-card p-8 rounded-xl">
+        <h2 className="text-2xl font-bold text-white mb-6 border-b border-slate-700/50 pb-4">Create New Policy</h2>
         
         <form onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 gap-6">
             <div>
-              <label className="block text-zinc-400 text-sm font-medium mb-2">Policy Number</label>
+              <label className="block text-slate-400 text-sm font-medium mb-2">Policy Number</label>
               <input
                 type="text"
                 name="policy_number"
                 value={formData.policy_number}
                 onChange={handleChange}
-                className="w-full bg-black border border-massmutual-border text-white p-3 rounded-lg focus:outline-none focus:border-blue-500 transition-colors"
+                className="w-full bg-slate-900/50 border border-slate-700 text-white p-3 rounded-lg focus:outline-none focus:border-blue-500 transition-colors"
                 placeholder="e.g. POL-2024-001"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-zinc-400 text-sm font-medium mb-2">Customer</label>
+              <label className="block text-slate-400 text-sm font-medium mb-2">Customer</label>
               <select
                 name="customer_id"
                 value={formData.customer_id}
                 onChange={handleChange}
-                className="w-full bg-black border border-massmutual-border text-white p-3 rounded-lg focus:outline-none focus:border-blue-500 transition-colors"
+                className="w-full bg-slate-900/50 border border-slate-700 text-white p-3 rounded-lg focus:outline-none focus:border-blue-500 transition-colors"
                 required
               >
                 <option value="">Select Customer</option>
                 {customers.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
+                  <option key={c.id} value={c.id} className="bg-slate-900">{c.name}</option>
                 ))}
               </select>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-zinc-400 text-sm font-medium mb-2">Policy Type</label>
+                <label className="block text-slate-400 text-sm font-medium mb-2">Policy Type</label>
                 <select
                   name="type"
                   value={formData.type}
                   onChange={handleChange}
-                  className="w-full bg-black border border-massmutual-border text-white p-3 rounded-lg focus:outline-none focus:border-blue-500 transition-colors"
+                  className="w-full bg-slate-900/50 border border-slate-700 text-white p-3 rounded-lg focus:outline-none focus:border-blue-500 transition-colors"
                 >
-                  <option value="Life">Life Insurance</option>
-                  <option value="Health">Health Insurance</option>
-                  <option value="Disability">Disability Insurance</option>
-                  <option value="Home">Home Insurance</option>
-                  <option value="Auto">Auto Insurance</option>
+                  <option value="Life" className="bg-slate-900">Life Insurance</option>
+                  <option value="Health" className="bg-slate-900">Health Insurance</option>
+                  <option value="Disability" className="bg-slate-900">Disability Insurance</option>
+                  <option value="Home" className="bg-slate-900">Home Insurance</option>
+                  <option value="Auto" className="bg-slate-900">Auto Insurance</option>
                 </select>
               </div>
               <div>
-                <label className="block text-zinc-400 text-sm font-medium mb-2">Payment Frequency</label>
+                <label className="block text-slate-400 text-sm font-medium mb-2">Payment Frequency</label>
                 <select
                   name="payment_frequency"
                   value={formData.payment_frequency}
                   onChange={handleChange}
-                  className="w-full bg-black border border-massmutual-border text-white p-3 rounded-lg focus:outline-none focus:border-blue-500 transition-colors"
+                  className="w-full bg-slate-900/50 border border-slate-700 text-white p-3 rounded-lg focus:outline-none focus:border-blue-500 transition-colors"
                 >
-                  <option value="monthly">Monthly</option>
-                  <option value="quarterly">Quarterly</option>
-                  <option value="annually">Annually</option>
+                  <option value="monthly" className="bg-slate-900">Monthly</option>
+                  <option value="quarterly" className="bg-slate-900">Quarterly</option>
+                  <option value="annually" className="bg-slate-900">Annually</option>
                 </select>
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-zinc-400 text-sm font-medium mb-2">Premium Amount ($)</label>
+                <label className="block text-slate-400 text-sm font-medium mb-2">Premium Amount ($)</label>
                 <input
                   type="number"
                   name="premium_amount"
                   value={formData.premium_amount}
                   onChange={handleChange}
-                  className="w-full bg-black border border-massmutual-border text-white p-3 rounded-lg focus:outline-none focus:border-blue-500 transition-colors"
+                  className="w-full bg-slate-900/50 border border-slate-700 text-white p-3 rounded-lg focus:outline-none focus:border-blue-500 transition-colors"
                   placeholder="0.00"
                   required
                 />
               </div>
               <div>
-                <label className="block text-zinc-400 text-sm font-medium mb-2">Coverage Amount ($)</label>
+                <label className="block text-slate-400 text-sm font-medium mb-2">Coverage Amount ($)</label>
                 <input
                   type="number"
                   name="coverage_amount"
                   value={formData.coverage_amount}
                   onChange={handleChange}
-                  className="w-full bg-black border border-massmutual-border text-white p-3 rounded-lg focus:outline-none focus:border-blue-500 transition-colors"
+                  className="w-full bg-slate-900/50 border border-slate-700 text-white p-3 rounded-lg focus:outline-none focus:border-blue-500 transition-colors"
                   placeholder="0.00"
                   required
                 />
@@ -153,24 +159,24 @@ const AddPolicy = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-zinc-400 text-sm font-medium mb-2">Issue Date</label>
+                <label className="block text-slate-400 text-sm font-medium mb-2">Issue Date</label>
                 <input
                   type="date"
                   name="issue_date"
                   value={formData.issue_date}
                   onChange={handleChange}
-                  className="w-full bg-black border border-massmutual-border text-white p-3 rounded-lg focus:outline-none focus:border-blue-500 transition-colors"
+                  className="w-full bg-slate-900/50 border border-slate-700 text-white p-3 rounded-lg focus:outline-none focus:border-blue-500 transition-colors"
                   required
                 />
               </div>
               <div>
-                <label className="block text-zinc-400 text-sm font-medium mb-2">Renewal Date</label>
+                <label className="block text-slate-400 text-sm font-medium mb-2">Renewal Date</label>
                 <input
                   type="date"
                   name="renewal_date"
                   value={formData.renewal_date}
                   onChange={handleChange}
-                  className="w-full bg-black border border-massmutual-border text-white p-3 rounded-lg focus:outline-none focus:border-blue-500 transition-colors"
+                  className="w-full bg-slate-900/50 border border-slate-700 text-white p-3 rounded-lg focus:outline-none focus:border-blue-500 transition-colors"
                   required
                 />
               </div>
@@ -180,13 +186,13 @@ const AddPolicy = () => {
                <button
                 type="button"
                 onClick={() => navigate('/policies')}
-                className="px-6 py-2 rounded-lg border border-massmutual-border text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+                className="px-6 py-2 rounded-lg border border-slate-700 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="bg-blue-600 text-white px-8 py-2 rounded-lg hover:bg-blue-700 shadow-glow hover:shadow-glow-strong transition-all"
+                className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-8 py-2 rounded-lg hover:from-blue-500 hover:to-blue-600 shadow-lg hover:shadow-blue-500/25 transform hover:-translate-y-0.5 transition-all"
               >
                 Create Policy
               </button>
@@ -194,7 +200,7 @@ const AddPolicy = () => {
           </div>
         </form>
       </div>
-    </div>
+    </motion.div>
   );
 };
 

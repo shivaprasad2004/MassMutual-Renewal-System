@@ -1,15 +1,10 @@
 @echo off
-echo Starting MassMutual Policy Renewal System...
-
-cd backend
-start "MassMutual Backend" cmd /k "npm run dev"
-cd ..
-
-cd frontend
-start "MassMutual Frontend" cmd /k "npm run dev"
-cd ..
-
-echo Application started!
-echo Backend: http://localhost:5000
-echo Frontend: http://localhost:5173
+echo Starting MassMutual Renewal System...
+echo ====================================
+echo.
+echo Installing root dependencies (if needed)...
+call npm install
+echo.
+echo Starting Backend and Frontend concurrently...
+npm start
 pause

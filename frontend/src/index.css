@@ -1,43 +1,97 @@
 @import "tailwindcss";
 
 @theme {
-  --color-massmutual-blue: #004B8D;
-  --color-massmutual-dark: #000000;
-  --color-massmutual-card: #09090b;
-  --color-massmutual-border: #27272a;
-  --color-massmutual-text: #f8fafc;
-  --color-massmutual-text-muted: #a1a1aa;
-  --color-accent-blue: #3b82f6;
-
-  --shadow-glow: 0 0 20px rgba(59, 130, 246, 0.15);
-  --shadow-glow-strong: 0 0 30px rgba(59, 130, 246, 0.3);
+  --color-brand-gold: #fbbf24;
+  --color-brand-silver: #94a3b8;
+  --color-brand-dark: #000000;
 }
 
 :root {
-  color-scheme: dark;
+  --glass-bg: rgba(0, 0, 0, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.1);
 }
 
 body {
-  background-color: var(--color-massmutual-dark);
-  color: var(--color-massmutual-text);
-  @apply antialiased;
-  font-family: 'Inter', sans-serif;
+  background-color: #000000;
+  color: #e2e8f0; /* slate-200 */
+  font-family: 'Inter', system-ui, sans-serif;
 }
 
-/* Custom Scrollbar for Dark Theme */
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-massmutual-dark;
+  background: #000000;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-zinc-800 rounded border border-black;
+  background: #333333;
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-zinc-700;
+  background: #555555;
+}
+
+/* Glassmorphism Utilities */
+.glass-panel {
+  @apply bg-black/60 backdrop-blur-xl border border-white/10 shadow-xl rounded-2xl;
+}
+
+.glass-card {
+  @apply bg-black/80 backdrop-blur-md border border-white/10 shadow-lg transition-all duration-300 rounded-xl;
+}
+.glass-card:hover {
+  @apply bg-neutral-900 border-white/20 shadow-[0_0_15px_rgba(255,255,255,0.05)];
+}
+
+/* Text Gradients */
+.text-gradient-gold {
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  background-image: linear-gradient(to right, #fef08a, #facc15, #ca8a04);
+}
+
+.text-gradient-silver {
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  background-image: linear-gradient(to right, #e2e8f0, #94a3b8, #64748b);
+}
+
+/* Tech / Mission Control Styles */
+.tech-border {
+  position: relative;
+}
+
+.tech-border::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 10px;
+  height: 10px;
+  border-top: 2px solid rgba(255, 255, 255, 0.3);
+  border-left: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.tech-border::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 10px;
+  height: 10px;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.3);
+  border-right: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.scanline {
+  background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(255,255,255,0.02) 50%, rgba(255,255,255,0.02));
+  background-size: 100% 4px;
+  pointer-events: none;
 }

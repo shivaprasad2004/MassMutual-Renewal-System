@@ -1,4 +1,6 @@
 const express = require('express');
+const http = require('http'); // Import http
+const { Server } = require('socket.io'); // Import Server from socket.io
 const cors = require('cors');
 const helmet = require('helmet');
 const dotenv = require('dotenv');
@@ -12,6 +14,21 @@ dotenv.config();
 connectDB();
 
 const app = express();
+const server = http.createServer(app); // Create HTTP server
+
+// Initialize Socket.io
+const io = new Server(server, {
+  cors: {
+    origin: "*", // Allow all origins for dev
+    methods: ["GET", "POST", "PUT", "DELETE"]
+  }
+});
+
+// Middleware to attach io to req
+app.use((req, res, next) => {
+  req.io = io;
+  next();
+});
 
 const authRoutes = require('./routes/authRoutes');
 const policyRoutes = require('./routes/policyRoutes');
@@ -22,6 +39,15 @@ const initCron = require('./jobs/renewalCheck');
 app.use(cors());
 app.use(helmet());
 app.use(express.json());
+
+// Socket.io Connection Handler
+io.on('connection', (socket) => {
+  console.log('New client connected:', socket.id);
+  
+  socket.on('disconnect', () => {
+    console.log('Client disconnected:', socket.id);
+  });
+});
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -37,6 +63,6 @@ app.get('/', (req, res) => {
 
 // Start Server
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+server.listen(PORT, () => { // Listen on server, not app
   console.log(`Server running on port ${PORT}`);
 });

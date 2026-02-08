@@ -1,24 +1,20 @@
 const { Sequelize } = require('sequelize');
 const dotenv = require('dotenv');
+const path = require('path');
 
 dotenv.config();
 
-const sequelize = new Sequelize(process.env.DATABASE_URL, {
-  dialect: 'postgres',
-  protocol: 'postgres',
-  logging: false,
-  dialectOptions: {
-    ssl: {
-      require: true,
-      rejectUnauthorized: false // This is often needed for Supabase/Heroku
-    }
-  }
+// Use SQLite for development to ensure reliability without external dependencies
+const sequelize = new Sequelize({
+  dialect: 'sqlite',
+  storage: path.join(__dirname, '../database.sqlite'),
+  logging: false
 });
 
 const connectDB = async () => {
   try {
     await sequelize.authenticate();
-    console.log('PostgreSQL Database connected successfully.');
+    console.log('SQLite Database connected successfully.');
     // Sync models
     await sequelize.sync({ alter: true }); 
     console.log('Models synced.');

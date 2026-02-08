@@ -17,12 +17,17 @@
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "express-validator": "^7.3.1",
+    "framer-motion": "^12.29.2",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
     "node-cron": "^4.2.1",
     "pg": "^8.17.2",
     "pg-hstore": "^2.3.4",
-    "sequelize": "^6.37.7"
+    "react-hot-toast": "^2.6.0",
+    "sequelize": "^6.37.7",
+    "socket.io": "^4.8.3",
+    "socket.io-client": "^4.8.3",
+    "sqlite3": "^5.1.7"
   },
   "devDependencies": {
     "nodemon": "^3.1.11"
