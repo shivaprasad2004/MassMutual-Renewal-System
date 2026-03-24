@@ -1,12 +1,65 @@
 const { Policy, Customer, Renewal } = require('../models');
 const { Op } = require('sequelize');
 const ServiceNowService = require('./servicenowService');
+const AIService = require('./aiService');
 
-exports.getAllPolicies = async () => {
-  return await Policy.findAll({
+exports.getAllPolicies = async ({ page = 1, limit = 50, status, type, search, sortBy = 'renewal_date', sortOrder = 'ASC' } = {}) => {
+  const where = {};
+  if (status) where.status = status;
+  if (type) where.type = type;
+
+  if (search) {
+    where[Op.or] = [
+      { policy_number: { [Op.like]: `%${search}%` } }
+    ];
+  }
+
+  const offset = (page - 1) * limit;
+
+  const result = await Policy.findAndCountAll({
+    where,
     include: [{ model: Customer }],
-    order: [['renewal_date', 'ASC']],
+    order: [[sortBy, sortOrder.toUpperCase()]],
+    limit: parseInt(limit),
+    offset
   });
+
+  // Add risk scores to each policy
+  const policiesWithRisk = result.rows.map(policy => {
+    const riskScore = AIService.calculatePolicyRiskScore(policy);
+    return {
+      ...policy.toJSON(),
+      risk_score: riskScore,
+      risk_level: AIService.getRiskLevel(riskScore)
+    };
+  });
+
+  return {
+    policies: policiesWithRisk,
+    total: result.count,
+    page: parseInt(page),
+    totalPages: Math.ceil(result.count / limit)
+  };
+};
+
+exports.getPolicyById = async (id) => {
+  const policy = await Policy.findByPk(id, {
+    include: [
+      { model: Customer },
+      { model: Renewal, order: [['renewal_date', 'DESC']] }
+    ]
+  });
+
+  if (!policy) throw new Error('Policy not found');
+
+  const riskScore = AIService.calculatePolicyRiskScore(policy);
+
+  return {
+    ...policy.toJSON(),
+    risk_score: riskScore,
+    risk_level: AIService.getRiskLevel(riskScore),
+    recommended_action: AIService.getRecommendedAction(riskScore, policy)
+  };
 };
 
 exports.createPolicy = async (data, agentId) => {
@@ -35,6 +88,9 @@ exports.createPolicy = async (data, agentId) => {
       u_status: policy.status,
       u_local_id: policy.id.toString()
     }).catch(err => console.error('Background ServiceNow Sync Error:', err.message));
+
+    // Sync AI insights too
+    AIService.syncPolicyAIInsights(policy);
   } catch (err) {
     console.error('ServiceNow Sync Error:', err.message);
   }
@@ -50,8 +106,6 @@ exports.updatePolicy = async (id, data) => {
 
   // Sync update to ServiceNow
   try {
-    // Note: We might want to store ServiceNow sys_id in our database for updates
-    // For now, we search by policy number or local id
     ServiceNowService.syncData({
       u_policy_number: policy.policy_number,
       u_type: policy.type,
@@ -70,6 +124,14 @@ exports.updatePolicy = async (id, data) => {
   return policy;
 };
 
+exports.bulkUpdateStatus = async (ids, status) => {
+  const result = await Policy.update(
+    { status },
+    { where: { id: { [Op.in]: ids } } }
+  );
+  return { updated: result[0] };
+};
+
 exports.deletePolicy = async (id) => {
   const policy = await Policy.findByPk(id);
   if (!policy) throw new Error('Policy not found');
@@ -84,7 +146,7 @@ exports.getStats = async () => {
   thirtyDaysFromNow.setDate(today.getDate() + 30);
 
   const totalPolicies = await Policy.count();
-  
+
   const upcomingRenewals = await Policy.count({
     where: {
       renewal_date: {
@@ -104,4 +166,35 @@ exports.getStats = async () => {
   });
 
   return { totalPolicies, upcomingRenewals, overduePolicies };
+};
+
+exports.exportPolicies = async (filters = {}) => {
+  const where = {};
+  if (filters.status) where.status = filters.status;
+  if (filters.type) where.type = filters.type;
+
+  const policies = await Policy.findAll({
+    where,
+    include: [{ model: Customer }],
+    order: [['renewal_date', 'ASC']]
+  });
+
+  // Generate CSV
+  const headers = ['Policy Number', 'Customer', 'Type', 'Premium', 'Coverage', 'Issue Date', 'Renewal Date', 'Status', 'Risk Score'];
+  const rows = policies.map(p => {
+    const riskScore = AIService.calculatePolicyRiskScore(p);
+    return [
+      p.policy_number,
+      p.Customer?.name || 'N/A',
+      p.type,
+      p.premium_amount,
+      p.coverage_amount,
+      p.issue_date,
+      p.renewal_date,
+      p.status,
+      riskScore
+    ].join(',');
+  });
+
+  return [headers.join(','), ...rows].join('\n');
 };

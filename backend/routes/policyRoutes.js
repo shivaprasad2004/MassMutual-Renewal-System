@@ -1,12 +1,26 @@
 const express = require('express');
 const router = express.Router();
-const { getPolicies, createPolicy, updatePolicy, deletePolicy, getDashboardStats } = require('../controllers/policyController');
+const {
+  getPolicies,
+  getPolicyById,
+  createPolicy,
+  updatePolicy,
+  bulkUpdateStatus,
+  deletePolicy,
+  getDashboardStats,
+  exportPolicies,
+  getAIInsights
+} = require('../controllers/policyController');
 const auth = require('../middleware/authMiddleware');
 
+router.get('/stats', auth, getDashboardStats);
+router.get('/ai-insights', auth, getAIInsights);
+router.get('/export', auth, exportPolicies);
 router.get('/', auth, getPolicies);
+router.get('/:id', auth, getPolicyById);
 router.post('/', auth, createPolicy);
+router.put('/bulk-status', auth, bulkUpdateStatus);
 router.put('/:id', auth, updatePolicy);
 router.delete('/:id', auth, deletePolicy);
-router.get('/stats', auth, getDashboardStats);
 
 module.exports = router;
