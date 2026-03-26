@@ -36,6 +36,8 @@ const customerRoutes = require('./routes/customerRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const activityRoutes = require('./routes/activityRoutes');
+const aiRoutes = require('./routes/aiRoutes');
+const renewalRoutes = require('./routes/renewalRoutes');
 const initCron = require('./jobs/renewalCheck');
 
 // Middleware
@@ -59,6 +61,8 @@ app.use('/api/customers', customerRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/activity', activityRoutes);
+app.use('/api/ai', aiRoutes);
+app.use('/api/renewals', renewalRoutes);
 
 // Initialize Cron Jobs
 initCron();

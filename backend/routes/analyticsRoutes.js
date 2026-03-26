@@ -8,7 +8,8 @@ const {
   getRecommendations,
   getTrends,
   getCustomerProfile,
-  getPortfolioHealth
+  getPortfolioHealth,
+  getReport
 } = require('../controllers/analyticsController');
 const auth = require('../middleware/authMiddleware');
 
@@ -19,6 +20,7 @@ router.get('/anomalies', auth, getAnomalies);
 router.get('/recommendations', auth, getRecommendations);
 router.get('/trends', auth, getTrends);
 router.get('/health', auth, getPortfolioHealth);
+router.get('/report', auth, getReport);
 router.get('/customer/:id', auth, getCustomerProfile);
 
 module.exports = router;

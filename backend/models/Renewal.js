@@ -19,6 +19,18 @@ const Renewal = sequelize.define('Renewal', {
     type: DataTypes.BOOLEAN,
     defaultValue: false,
   },
+  stage: {
+    type: DataTypes.ENUM('upcoming', 'in_progress', 'completed', 'lapsed'),
+    defaultValue: 'upcoming',
+  },
+  priority: {
+    type: DataTypes.STRING,
+    defaultValue: 'medium',
+  },
+  notes: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
 });
 
 module.exports = Renewal;

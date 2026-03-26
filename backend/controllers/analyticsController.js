@@ -65,6 +65,25 @@ exports.getCustomerProfile = async (req, res) => {
   }
 };
 
+exports.getReport = async (req, res) => {
+  try {
+    const ReportService = require('../services/reportService');
+    const { format = 'json', status, type } = req.query;
+
+    if (format === 'csv') {
+      const csv = await ReportService.generateCSVReport({ status, type });
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename=portfolio_report.csv');
+      return res.send(csv);
+    }
+
+    const report = await ReportService.generatePortfolioReport();
+    res.json(report);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 exports.getPortfolioHealth = async (req, res) => {
   try {
     const health = await AIService.getPortfolioHealth();

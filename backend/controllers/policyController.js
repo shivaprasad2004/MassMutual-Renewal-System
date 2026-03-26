@@ -165,6 +165,96 @@ exports.getAIInsights = async (req, res) => {
   }
 };
 
+exports.getPolicyTimeline = async (req, res) => {
+  try {
+    const { ActivityLog } = require('../models');
+    const policy = await policyService.getPolicyById(req.params.id);
+    const activities = await ActivityLog.findAll({
+      where: { entity_type: 'policy', entity_id: req.params.id },
+      order: [['createdAt', 'DESC']],
+      limit: 50
+    });
+    res.json({
+      policy,
+      timeline: activities.map(a => ({
+        id: a.id,
+        action: a.action,
+        description: a.description,
+        metadata: a.metadata,
+        timestamp: a.createdAt
+      }))
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+exports.getRiskBreakdown = async (req, res) => {
+  try {
+    const aiService = require('../services/aiService');
+    const policy = await policyService.getPolicyById(req.params.id);
+
+    const today = new Date();
+    const renewalDate = new Date(policy.renewal_date);
+    const issueDate = new Date(policy.issue_date);
+    const daysToRenewal = Math.ceil((renewalDate - today) / (1000 * 60 * 60 * 24));
+    const policyAgeDays = Math.ceil((today - issueDate) / (1000 * 60 * 60 * 24));
+
+    // Factor 1: Days to renewal
+    let renewalRisk = 0;
+    if (daysToRenewal < 0) renewalRisk = 30;
+    else if (daysToRenewal <= 7) renewalRisk = 25;
+    else if (daysToRenewal <= 15) renewalRisk = 20;
+    else if (daysToRenewal <= 30) renewalRisk = 15;
+    else if (daysToRenewal <= 60) renewalRisk = 8;
+    else if (daysToRenewal <= 90) renewalRisk = 4;
+
+    // Factor 2: Status
+    let statusRisk = 0;
+    if (policy.status === 'Lapsed') statusRisk = 25;
+    else if (policy.status === 'Pending Renewal') statusRisk = 15;
+
+    // Factor 3: Premium ratio
+    let premiumRisk = 0;
+    if (policy.premium_amount && policy.coverage_amount) {
+      const ratio = policy.premium_amount / policy.coverage_amount;
+      if (ratio > 0.1) premiumRisk = 15;
+      else if (ratio > 0.05) premiumRisk = 10;
+      else if (ratio > 0.02) premiumRisk = 5;
+    }
+
+    // Factor 4: Policy age
+    let ageRisk = 0;
+    if (policyAgeDays < 90) ageRisk = 15;
+    else if (policyAgeDays < 180) ageRisk = 10;
+    else if (policyAgeDays < 365) ageRisk = 5;
+
+    // Factor 5: Payment frequency
+    let frequencyRisk = 0;
+    if (policy.payment_frequency === 'monthly') frequencyRisk = 10;
+    else if (policy.payment_frequency === 'quarterly') frequencyRisk = 5;
+
+    const totalScore = Math.min(100, renewalRisk + statusRisk + premiumRisk + ageRisk + frequencyRisk);
+
+    res.json({
+      policy_id: policy.id,
+      policy_number: policy.policy_number,
+      total_score: totalScore,
+      risk_level: aiService.getRiskLevel(totalScore),
+      factors: [
+        { name: 'Renewal Proximity', score: renewalRisk, max: 30, description: daysToRenewal < 0 ? `Overdue by ${Math.abs(daysToRenewal)} days` : `${daysToRenewal} days to renewal` },
+        { name: 'Policy Status', score: statusRisk, max: 25, description: `Current status: ${policy.status}` },
+        { name: 'Premium/Coverage Ratio', score: premiumRisk, max: 15, description: `Ratio: ${((policy.premium_amount / policy.coverage_amount) * 100).toFixed(2)}%` },
+        { name: 'Policy Age', score: ageRisk, max: 15, description: `${policyAgeDays} days old` },
+        { name: 'Payment Frequency', score: frequencyRisk, max: 15, description: `${policy.payment_frequency} payments` }
+      ],
+      recommendation: aiService.getRecommendedAction(totalScore, policy)
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 exports.exportPolicies = async (req, res) => {
   try {
     const { status, type } = req.query;
