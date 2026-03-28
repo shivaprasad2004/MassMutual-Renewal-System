@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import GlobalSearch from './GlobalSearch';
+import ErrorBoundary from './ErrorBoundary';
+import Watermark from './Watermark';
 import { useAuth } from '../hooks/useAuth';
 import { Toaster } from 'react-hot-toast';
 import ThreeBackground from './ThreeBackground';
@@ -11,6 +14,7 @@ const Layout = () => {
   const { user } = useAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const location = useLocation();
 
   // Ctrl+K / Cmd+K shortcut
   useEffect(() => {
@@ -30,6 +34,7 @@ const Layout = () => {
   return (
     <div className="flex min-h-screen relative overflow-hidden">
       <ThreeBackground />
+      <Watermark />
 
       {/* Sidebar */}
       <div className={`${sidebarWidth} fixed inset-y-0 z-50 glass-panel border-r border-white/5 transition-all duration-300`}>
@@ -45,7 +50,19 @@ const Layout = () => {
         <Header onOpenSearch={() => setSearchOpen(true)} />
         <main className="p-6 min-h-[calc(100vh-52px)]">
           <div className="glass-panel rounded-2xl p-6 min-h-[calc(100vh-6rem)]">
-            <Outlet />
+            <ErrorBoundary>
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={location.pathname}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.3, ease: 'easeInOut' }}
+                >
+                  <Outlet />
+                </motion.div>
+              </AnimatePresence>
+            </ErrorBoundary>
           </div>
         </main>
       </div>

@@ -4,6 +4,7 @@ import { motion, useScroll, useTransform } from 'framer-motion';
 import Navbar from '../components/Navbar';
 import Landing3DScene from '../components/Landing3DScene';
 import Footer from '../components/Footer';
+import HeroDashboardMockup from '../components/HeroDashboardMockup';
 
 const Section = ({ children, className }) => (
   <section className={`min-h-screen flex items-center justify-center relative z-10 p-8 ${className}`}>
@@ -46,7 +47,7 @@ const LandingPage = () => {
             </div>
           </motion.div>
           <div className="hidden lg:block relative h-96">
-            {/* 3D elements are in the background, this is just spacing */}
+            <HeroDashboardMockup />
           </div>
         </div>
       </Section>

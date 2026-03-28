@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import api from '../services/api'; 
+import api from '../services/api';
 import { useSocket } from '../context/SocketContext';
+import { useNavigate } from 'react-router-dom';
 import { Doughnut } from 'react-chartjs-2';
 import { motion, AnimatePresence } from 'framer-motion';
 import TelemetryStream from '../components/TelemetryStream';
 import AIInsights from '../components/AIInsights';
+import AnimatedCounter from '../components/ui/AnimatedCounter';
+import { DashboardSkeleton } from '../components/ui/Skeleton';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -15,15 +18,16 @@ import {
   Legend,
   ArcElement
 } from 'chart.js';
-import { 
-  HiClipboardDocumentCheck as ClipboardDocumentCheckIcon, 
-  HiExclamationTriangle as ExclamationTriangleIcon, 
-  HiCheckCircle as CheckCircleIcon, 
+import {
+  HiClipboardDocumentCheck as ClipboardDocumentCheckIcon,
+  HiExclamationTriangle as ExclamationTriangleIcon,
+  HiCheckCircle as CheckCircleIcon,
   HiArrowPath as ArrowPathIcon,
   HiCpuChip as CpuChipIcon,
   HiSignal as SignalIcon,
   HiBeaker as BeakerIcon,
-  HiCommandLine as CommandLineIcon
+  HiCommandLine as CommandLineIcon,
+  HiPlus, HiSparkles, HiArrowDownTray
 } from 'react-icons/hi2';
 
 ChartJS.register(
@@ -45,7 +49,9 @@ const Dashboard = () => {
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
+  const [quickActionsOpen, setQuickActionsOpen] = useState(false);
   const { socket } = useSocket();
+  const navigate = useNavigate();
 
   const fetchData = async () => {
     try {
@@ -91,9 +97,9 @@ const Dashboard = () => {
         label: '# of Policies',
         data: [stats.upcomingRenewals, stats.overduePolicies, Math.max(0, stats.totalPolicies - stats.upcomingRenewals - stats.overduePolicies)],
         backgroundColor: [
-          'rgba(251, 191, 36, 0.6)', // Amber (Gold)
-          'rgba(239, 68, 68, 0.6)',  // Red
-          'rgba(59, 130, 246, 0.6)', // Blue
+          'rgba(251, 191, 36, 0.6)',
+          'rgba(239, 68, 68, 0.6)',
+          'rgba(59, 130, 246, 0.6)',
         ],
         borderColor: [
           'rgba(251, 191, 36, 1)',
@@ -128,10 +134,10 @@ const Dashboard = () => {
 
   const containerVariants = {
     hidden: { opacity: 0 },
-    visible: { 
+    visible: {
       opacity: 1,
-      transition: { 
-        staggerChildren: 0.1 
+      transition: {
+        staggerChildren: 0.1
       }
     }
   };
@@ -142,18 +148,11 @@ const Dashboard = () => {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="flex flex-col items-center space-y-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
-          <p className="text-white font-mono text-sm animate-pulse uppercase tracking-[0.2em]">INITIALIZING SYSTEM CORE...</p>
-        </div>
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   return (
-    <motion.div 
+    <motion.div
       className="space-y-6 h-full flex flex-col pb-10"
       variants={containerVariants}
       initial="hidden"
@@ -174,14 +173,14 @@ const Dashboard = () => {
         </div>
 
         <div className="flex bg-white/5 p-1 rounded-lg border border-white/10 backdrop-blur-xl">
-          <button 
+          <button
             onClick={() => setActiveTab('overview')}
             className={`px-4 py-2 text-xs font-mono uppercase tracking-widest rounded transition-all flex items-center gap-2 ${activeTab === 'overview' ? 'bg-white/10 text-white shadow-lg border border-white/20' : 'text-slate-500 hover:text-slate-300'}`}
           >
             <SignalIcon className="w-4 h-4" />
             Overview
           </button>
-          <button 
+          <button
             onClick={() => setActiveTab('ai')}
             className={`px-4 py-2 text-xs font-mono uppercase tracking-widest rounded transition-all flex items-center gap-2 ${activeTab === 'ai' ? 'bg-blue-500/20 text-blue-400 shadow-lg border border-blue-500/30' : 'text-slate-500 hover:text-slate-300'}`}
           >
@@ -193,7 +192,7 @@ const Dashboard = () => {
 
       <AnimatePresence mode="wait">
         {activeTab === 'overview' ? (
-          <motion.div 
+          <motion.div
             key="overview"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -202,14 +201,16 @@ const Dashboard = () => {
           >
             {/* Top Stats Row */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <motion.div variants={itemVariants} className="glass-card p-6 tech-border relative group overflow-hidden">
+              <motion.div variants={itemVariants} className="glass-card p-6 tech-border relative group overflow-hidden grid-pattern">
                 <div className="absolute -right-4 -top-4 opacity-5 group-hover:opacity-10 transition-opacity">
                   <ClipboardDocumentCheckIcon className="w-24 h-24" />
                 </div>
                 <div className="flex justify-between items-start relative z-10">
                   <div>
                     <p className="text-slate-400 font-mono text-xs uppercase tracking-wider mb-1">Total Coverage</p>
-                    <h3 className="text-4xl font-black text-white font-mono">{stats.totalPolicies}</h3>
+                    <h3 className="text-4xl font-black text-white font-mono">
+                      <AnimatedCounter target={stats.totalPolicies} />
+                    </h3>
                   </div>
                   <div className="p-2 bg-white/5 border border-white/10 rounded text-slate-400 group-hover:text-white transition-colors">
                     <ClipboardDocumentCheckIcon className="w-6 h-6" />
@@ -217,8 +218,8 @@ const Dashboard = () => {
                 </div>
                 <div className="mt-6 flex items-center space-x-2">
                   <div className="flex-1 h-1 bg-slate-800">
-                    <motion.div 
-                      className="h-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.5)]" 
+                    <motion.div
+                      className="h-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.5)]"
                       initial={{ width: 0 }}
                       animate={{ width: '100%' }}
                       transition={{ duration: 1.5, ease: "easeOut" }}
@@ -228,14 +229,16 @@ const Dashboard = () => {
                 </div>
               </motion.div>
 
-              <motion.div variants={itemVariants} className="glass-card p-6 tech-border relative group overflow-hidden border-l-amber-500/30 border-l-2">
+              <motion.div variants={itemVariants} className="glass-card p-6 tech-border relative group overflow-hidden border-l-amber-500/30 border-l-2 grid-pattern">
                 <div className="absolute -right-4 -top-4 opacity-5 group-hover:opacity-10 transition-opacity">
                   <ArrowPathIcon className="w-24 h-24" />
                 </div>
                 <div className="flex justify-between items-start relative z-10">
                   <div>
                     <p className="text-slate-400 font-mono text-xs uppercase tracking-wider mb-1">Renewal Targets</p>
-                    <h3 className="text-4xl font-black text-white font-mono">{stats.upcomingRenewals}</h3>
+                    <h3 className="text-4xl font-black text-white font-mono">
+                      <AnimatedCounter target={stats.upcomingRenewals} />
+                    </h3>
                   </div>
                   <div className="p-2 bg-amber-500/10 border border-amber-500/20 rounded text-amber-500 group-hover:text-amber-400 transition-colors">
                     <ArrowPathIcon className="w-6 h-6" />
@@ -243,10 +246,10 @@ const Dashboard = () => {
                 </div>
                 <div className="mt-6 flex items-center space-x-2">
                   <div className="flex-1 h-1 bg-slate-800">
-                    <motion.div 
-                      className="h-full bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]" 
+                    <motion.div
+                      className="h-full bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]"
                       initial={{ width: 0 }}
-                      animate={{ width: `${(stats.upcomingRenewals / stats.totalPolicies) * 100}%` }}
+                      animate={{ width: `${stats.totalPolicies > 0 ? (stats.upcomingRenewals / stats.totalPolicies) * 100 : 0}%` }}
                       transition={{ duration: 1.5, ease: "easeOut", delay: 0.2 }}
                     />
                   </div>
@@ -254,14 +257,16 @@ const Dashboard = () => {
                 </div>
               </motion.div>
 
-              <motion.div variants={itemVariants} className="glass-card p-6 tech-border relative group overflow-hidden border-l-red-500/30 border-l-2">
+              <motion.div variants={itemVariants} className="glass-card p-6 tech-border relative group overflow-hidden border-l-red-500/30 border-l-2 grid-pattern">
                 <div className="absolute -right-4 -top-4 opacity-5 group-hover:opacity-10 transition-opacity">
                   <ExclamationTriangleIcon className="w-24 h-24" />
                 </div>
                 <div className="flex justify-between items-start relative z-10">
                   <div>
                     <p className="text-slate-400 font-mono text-xs uppercase tracking-wider mb-1">Critical Lapses</p>
-                    <h3 className="text-4xl font-black text-white font-mono">{stats.overduePolicies}</h3>
+                    <h3 className="text-4xl font-black text-white font-mono">
+                      <AnimatedCounter target={stats.overduePolicies} />
+                    </h3>
                   </div>
                   <div className="p-2 bg-red-500/10 border border-red-500/20 rounded text-red-500 group-hover:text-red-400 transition-colors">
                     <ExclamationTriangleIcon className="w-6 h-6" />
@@ -269,10 +274,10 @@ const Dashboard = () => {
                 </div>
                 <div className="mt-6 flex items-center space-x-2">
                   <div className="flex-1 h-1 bg-slate-800">
-                    <motion.div 
-                      className="h-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]" 
+                    <motion.div
+                      className="h-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]"
                       initial={{ width: 0 }}
-                      animate={{ width: `${(stats.overduePolicies / stats.totalPolicies) * 100}%` }}
+                      animate={{ width: `${stats.totalPolicies > 0 ? (stats.overduePolicies / stats.totalPolicies) * 100 : 0}%` }}
                       transition={{ duration: 1.5, ease: "easeOut", delay: 0.4 }}
                     />
                   </div>
@@ -328,12 +333,12 @@ const Dashboard = () => {
             {/* Recent Activity Section */}
             <motion.div variants={itemVariants} className="glass-card p-6 tech-border">
                <h3 className="text-white font-bold mb-6 flex items-center gap-2">
-                  <HiCommandLine className="w-5 h-5 text-slate-400" />
+                  <CommandLineIcon className="w-5 h-5 text-slate-400" />
                   RECENT SYSTEM ACTIVITY
                </h3>
                <div className="space-y-3 overflow-hidden">
                   {activities.map((act, i) => (
-                    <motion.div 
+                    <motion.div
                       key={act.id}
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
@@ -344,7 +349,7 @@ const Dashboard = () => {
                         <div className={`w-2 h-2 rounded-full ${act.action === 'CREATE' ? 'bg-green-500' : act.action === 'UPDATE' ? 'bg-blue-500' : 'bg-red-500'}`} />
                         <div>
                           <p className="text-xs text-white font-bold group-hover:text-blue-400 transition-colors uppercase tracking-tight">{act.description}</p>
-                          <p className="text-[10px] text-slate-500 font-mono uppercase">{act.User?.name} • {new Date(act.createdAt).toLocaleString()}</p>
+                          <p className="text-[10px] text-slate-500 font-mono uppercase">{act.User?.name} &bull; {new Date(act.createdAt).toLocaleString()}</p>
                         </div>
                       </div>
                       <div className="text-[10px] font-mono text-slate-600 group-hover:text-slate-400">
@@ -361,7 +366,7 @@ const Dashboard = () => {
             </motion.div>
           </motion.div>
         ) : (
-          <motion.div 
+          <motion.div
             key="ai"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -371,6 +376,48 @@ const Dashboard = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Quick Actions FAB */}
+      <div className="fixed bottom-8 right-8 z-40">
+        <AnimatePresence>
+          {quickActionsOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: 10, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.9 }}
+              className="absolute bottom-16 right-0 mb-2 space-y-2 min-w-[180px]"
+            >
+              {[
+                { label: 'New Policy', icon: HiPlus, onClick: () => navigate('/policies/new'), color: 'bg-blue-600 hover:bg-blue-500' },
+                { label: 'AI Analysis', icon: HiSparkles, onClick: () => navigate('/ai-command'), color: 'bg-purple-600 hover:bg-purple-500' },
+                { label: 'Export Data', icon: HiArrowDownTray, onClick: () => {}, color: 'bg-amber-600 hover:bg-amber-500' },
+              ].map((action, i) => (
+                <motion.button
+                  key={action.label}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.05 }}
+                  onClick={() => { action.onClick(); setQuickActionsOpen(false); }}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 ${action.color} text-white rounded-lg font-mono text-xs uppercase tracking-wider shadow-lg transition-all click-scale`}
+                >
+                  <action.icon className="w-4 h-4" />
+                  {action.label}
+                </motion.button>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+        <button
+          onClick={() => setQuickActionsOpen(!quickActionsOpen)}
+          className={`w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition-all ${
+            quickActionsOpen
+              ? 'bg-slate-700 hover:bg-slate-600 rotate-45'
+              : 'bg-blue-600 hover:bg-blue-500 hover:shadow-blue-500/30'
+          }`}
+        >
+          <HiPlus className="w-6 h-6 text-white transition-transform" />
+        </button>
+      </div>
     </motion.div>
   );
 };

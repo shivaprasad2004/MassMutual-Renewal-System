@@ -5,6 +5,7 @@ import { Float, Icosahedron, PerspectiveCamera, Ring } from '@react-three/drei';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import Landing3DScene from '../components/Landing3DScene';
+import GradientMesh from '../components/GradientMesh';
 import { FaMapMarkerAlt, FaPhone, FaEnvelope, FaTwitter, FaLinkedin, FaGithub } from 'react-icons/fa';
 
 // 3D Vector Diagram for Contact - Satellite/Signal
@@ -46,6 +47,7 @@ const Contact = () => {
   return (
     <div className="relative bg-black text-white selection:bg-blue-500/30 overflow-hidden">
       <Landing3DScene />
+      <GradientMesh />
       <div className="absolute inset-0 z-0 pointer-events-none">
         <Canvas>
            <PerspectiveCamera makeDefault position={[0, 0, 10]} />

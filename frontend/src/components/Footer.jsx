@@ -75,7 +75,7 @@ const Footer = () => {
         </div>
 
         <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center text-xs text-slate-600 font-mono">
-          <p>© 2024 MASSMUTUAL SYSTEMS. ALL RIGHTS RESERVED.</p>
+          <p>© {new Date().getFullYear()} MASSMUTUAL SYSTEMS. ALL RIGHTS RESERVED.</p>
           <div className="flex space-x-8 mt-4 md:mt-0">
             <a href="#" className="hover:text-slate-400 transition-colors">PRIVACY POLICY</a>
             <a href="#" className="hover:text-slate-400 transition-colors">TERMS OF SERVICE</a>

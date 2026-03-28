@@ -3,8 +3,10 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const helmet = require('helmet');
+const morgan = require('morgan');
 const dotenv = require('dotenv');
 const { connectDB } = require('./config/db');
+const errorHandler = require('./middleware/errorHandler');
 require('./models');
 
 // Load environment variables
@@ -16,11 +18,14 @@ connectDB();
 const app = express();
 const server = http.createServer(app);
 
+const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:5173';
+
 // Initialize Socket.io
 const io = new Server(server, {
   cors: {
-    origin: "*",
-    methods: ["GET", "POST", "PUT", "DELETE"]
+    origin: corsOrigin,
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true
   }
 });
 
@@ -41,8 +46,9 @@ const renewalRoutes = require('./routes/renewalRoutes');
 const initCron = require('./jobs/renewalCheck');
 
 // Middleware
-app.use(cors());
+app.use(cors({ origin: corsOrigin, credentials: true }));
 app.use(helmet());
+app.use(morgan('dev'));
 app.use(express.json());
 
 // Socket.io Connection Handler
@@ -70,6 +76,9 @@ initCron();
 app.get('/', (req, res) => {
   res.send('MassMutual Policy Renewal API is running');
 });
+
+// Centralized error handler
+app.use(errorHandler);
 
 // Start Server
 const PORT = process.env.PORT || 5000;
