@@ -1,25 +1,29 @@
-const { Customer } = require('../models');
 const ServiceNowService = require('./servicenowService');
 
+const TABLE = 'u_customer_records';
+
+/**
+ * ServiceNow-Native Customer Service
+ */
 exports.getAllCustomers = async () => {
-  return await Customer.findAll();
+  const results = await ServiceNowService.find(TABLE, '', 1000);
+  return results.map(c => ({
+    id: c.sys_id,
+    name: c.u_name,
+    email: c.u_email,
+    phone: c.u_phone,
+    address: c.u_address
+  }));
 };
 
 exports.createCustomer = async (data) => {
-  const customer = await Customer.create(data);
+  const payload = {
+    u_name: data.name,
+    u_email: data.email,
+    u_phone: data.phone,
+    u_address: data.address
+  };
 
-  // Sync to ServiceNow
-  try {
-    ServiceNowService.syncData({
-      u_name: customer.name,
-      u_email: customer.email,
-      u_phone: customer.phone,
-      u_address: customer.address,
-      u_local_id: customer.id.toString()
-    }, 'u_customer_records').catch(err => console.error('ServiceNow Customer Sync Error:', err.message));
-  } catch (err) {
-    console.error('ServiceNow Customer Sync Error:', err.message);
-  }
-
-  return customer;
+  const result = await ServiceNowService.create(TABLE, payload);
+  return { id: result.sys_id, ...data };
 };

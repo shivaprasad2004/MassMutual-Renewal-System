@@ -1,23 +1,31 @@
 const customerService = require('../services/customerService');
 const AIService = require('../services/aiService');
-const { Customer, Policy, ActivityLog } = require('../models');
+const ServiceNowService = require('../services/servicenowService');
+const ActivityService = require('../services/activityService');
+
+const POLICY_TABLE = 'u_policy_records';
+const CUSTOMER_TABLE = 'u_customer_records';
 
 exports.getCustomers = async (req, res) => {
   try {
     const customers = await customerService.getAllCustomers();
-    // Enrich with policy counts and risk
     const enriched = [];
-    for (const c of customers) {
-      const customer = c.toJSON ? c.toJSON() : c;
-      const policies = await Policy.findAll({ where: { customer_id: customer.id } });
-      const riskScores = policies.map(p => AIService.calculatePolicyRiskScore(p));
+    
+    // Fetch all policies once to avoid N+1 SN calls
+    const allPolicies = await ServiceNowService.find(POLICY_TABLE, '', 1000);
+
+    for (const customer of customers) {
+      const customerPolicies = allPolicies.filter(p => p.u_customer_id === customer.id || p.u_customer_name === customer.name);
+      
+      const riskScores = customerPolicies.map(p => AIService.calculatePolicyRiskScore(p));
       const avgRisk = riskScores.length > 0 ? Math.round(riskScores.reduce((a, b) => a + b, 0) / riskScores.length) : 0;
+      
       enriched.push({
         ...customer,
-        policy_count: policies.length,
+        policy_count: customerPolicies.length,
         avg_risk: avgRisk,
         risk_level: AIService.getRiskLevel(avgRisk),
-        total_premium: policies.reduce((sum, p) => sum + (parseFloat(p.premium_amount) || 0), 0)
+        total_premium: customerPolicies.reduce((sum, p) => sum + (parseFloat(p.u_premium_amount) || 0), 0)
       });
     }
     res.json(enriched);
@@ -47,37 +55,23 @@ exports.getCustomerById = async (req, res) => {
 
 exports.getCustomerTimeline = async (req, res) => {
   try {
-    const activities = await ActivityLog.findAll({
-      where: { entity_type: 'customer', entity_id: req.params.id },
-      order: [['createdAt', 'DESC']],
-      limit: 50
-    });
+    const customerActivities = await ActivityService.getByEntity('customer', req.params.id);
+    
     // Also get policy-related activities for this customer's policies
-    const policies = await Policy.findAll({ where: { customer_id: req.params.id } });
-    const policyIds = policies.map(p => p.id);
-
-    let policyActivities = [];
-    if (policyIds.length > 0) {
-      const { Op } = require('sequelize');
-      policyActivities = await ActivityLog.findAll({
-        where: { entity_type: 'policy', entity_id: { [Op.in]: policyIds } },
-        order: [['createdAt', 'DESC']],
-        limit: 50
-      });
+    const policies = await ServiceNowService.find(POLICY_TABLE, `u_customer_id=${req.params.id}`, 100);
+    
+    let allActivities = [...customerActivities];
+    
+    for (const p of policies) {
+      const policyActivities = await ActivityService.getByEntity('policy', p.sys_id);
+      allActivities = [...allActivities, ...policyActivities];
     }
 
-    const allActivities = [...activities, ...policyActivities]
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    const sortedActivities = allActivities
+      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
       .slice(0, 50);
 
-    res.json(allActivities.map(a => ({
-      id: a.id,
-      action: a.action,
-      description: a.description,
-      entity_type: a.entity_type,
-      entity_id: a.entity_id,
-      timestamp: a.createdAt
-    })));
+    res.json(sortedActivities);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
@@ -85,10 +79,8 @@ exports.getCustomerTimeline = async (req, res) => {
 
 exports.updateCustomer = async (req, res) => {
   try {
-    const customer = await Customer.findByPk(req.params.id);
-    if (!customer) return res.status(404).json({ message: 'Customer not found' });
-    await customer.update(req.body);
-    res.json(customer);
+    const result = await ServiceNowService.update(CUSTOMER_TABLE, req.params.id, req.body);
+    res.json({ id: req.params.id, ...req.body });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }

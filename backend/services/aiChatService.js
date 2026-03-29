@@ -1,68 +1,15 @@
-const { Policy, Customer, Renewal } = require('../models');
-const { Op } = require('sequelize');
 const AIService = require('./aiService');
+const ServiceNowService = require('./servicenowService');
 
 class AIChatService {
+  static POLICY_TABLE = 'u_policy_records';
+  static CUSTOMER_TABLE = 'u_customer_records';
+
   static async processQuery(message) {
     const lowerMsg = message.toLowerCase().trim();
 
-    // Try OpenAI if configured
-    if (process.env.OPENAI_API_KEY) {
-      try {
-        return await this.processWithLLM(message);
-      } catch (err) {
-        console.error('LLM processing failed, falling back to local:', err.message);
-      }
-    }
-
-    // Local rule-based fallback
+    // Local rule-based processing for ServiceNow-Native environment
     return await this.processLocally(lowerMsg, message);
-  }
-
-  static async processWithLLM(message) {
-    const { default: OpenAI } = await import('openai');
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-    // Get context data
-    const [health, stats] = await Promise.all([
-      AIService.getPortfolioHealth(),
-      AIService.getDashboardData()
-    ]);
-
-    const systemPrompt = `You are an AI assistant for a MassMutual policy renewal management system. You help agents monitor policies, track renewals, and manage risk.
-
-Current Portfolio Stats:
-- Total Policies: ${stats.stats.totalPolicies}
-- Upcoming Renewals: ${stats.stats.upcomingRenewals}
-- Overdue Policies: ${stats.stats.overduePolicies}
-- Portfolio Health: ${health.grade} (${health.score}/100)
-- Revenue at Risk: $${stats.stats.revenueAtRisk?.toLocaleString()}
-- Renewal Rate: ${stats.stats.renewalRate}%
-
-Top Risk Policies: ${JSON.stringify(stats.topRiskPolicies?.slice(0, 5).map(p => ({ number: p.policy_number, risk: p.risk_score, customer: p.customer_name })))}
-
-Anomalies: ${JSON.stringify(stats.anomalies?.slice(0, 3))}
-
-Answer concisely with actionable insights. Use the data above to answer policy-related questions. If asked to show or list data, format it clearly.`;
-
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: message }
-      ],
-      max_tokens: 500,
-      temperature: 0.7
-    });
-
-    const reply = completion.choices[0].message.content;
-
-    return {
-      type: 'ai_response',
-      message: reply,
-      source: 'llm',
-      timestamp: new Date().toISOString()
-    };
   }
 
   static async processLocally(lowerMsg, originalMsg) {
@@ -72,7 +19,7 @@ Answer concisely with actionable insights. Use the data above to answer policy-r
       const highRisk = scores.filter(p => p.risk_level === 'critical' || p.risk_level === 'high');
       return {
         type: 'policy_list',
-        message: `Found ${highRisk.length} high/critical risk policies.`,
+        message: `Found ${highRisk.length} high/critical risk policies in ServiceNow.`,
         data: highRisk.slice(0, 10),
         source: 'local',
         timestamp: new Date().toISOString()
@@ -90,7 +37,7 @@ Answer concisely with actionable insights. Use the data above to answer policy-r
       const predictions = await AIService.getRenewalPredictions(days);
       return {
         type: 'predictions',
-        message: `Found ${predictions.length} policies with renewals in the next ${days} days.`,
+        message: `Found ${predictions.length} policies in ServiceNow with renewals in the next ${days} days.`,
         data: predictions.slice(0, 10),
         source: 'local',
         timestamp: new Date().toISOString()
@@ -102,7 +49,7 @@ Answer concisely with actionable insights. Use the data above to answer policy-r
       const dashboard = await AIService.getDashboardData();
       return {
         type: 'health_report',
-        message: `Portfolio Health: ${health.grade} (${health.score}/100). ${health.breakdown.total_policies} total policies. ${health.breakdown.critical} critical, ${health.breakdown.high} high risk.`,
+        message: `Portfolio Health: ${health.grade} (${health.score}/100). ${health.breakdown.total_policies} total policies in ServiceNow. ${health.breakdown.critical} critical, ${health.breakdown.high} high risk.`,
         data: { health, stats: dashboard.stats },
         source: 'local',
         timestamp: new Date().toISOString()
@@ -113,7 +60,7 @@ Answer concisely with actionable insights. Use the data above to answer policy-r
       const anomalies = await AIService.detectAnomalies();
       return {
         type: 'anomalies',
-        message: `Detected ${anomalies.length} anomalies in the portfolio.`,
+        message: `Detected ${anomalies.length} anomalies in the ServiceNow portfolio.`,
         data: anomalies.slice(0, 10),
         source: 'local',
         timestamp: new Date().toISOString()
@@ -124,19 +71,8 @@ Answer concisely with actionable insights. Use the data above to answer policy-r
       const recommendations = await AIService.getRecommendations();
       return {
         type: 'recommendations',
-        message: `Here are ${recommendations.length} AI recommendations for your portfolio.`,
+        message: `Here are ${recommendations.length} AI recommendations based on ServiceNow data.`,
         data: recommendations,
-        source: 'local',
-        timestamp: new Date().toISOString()
-      };
-    }
-
-    if (lowerMsg.includes('trend') || lowerMsg.includes('performance') || lowerMsg.includes('history')) {
-      const trends = await AIService.getRenewalTrends();
-      return {
-        type: 'trends',
-        message: `Renewal trends for the last 6 months.`,
-        data: trends,
         source: 'local',
         timestamp: new Date().toISOString()
       };
@@ -145,14 +81,17 @@ Answer concisely with actionable insights. Use the data above to answer policy-r
     if (lowerMsg.includes('customer') && (lowerMsg.includes('search') || lowerMsg.includes('find') || lowerMsg.includes('show'))) {
       const nameMatch = originalMsg.match(/(?:customer|for)\s+["']?([a-zA-Z\s]+)["']?/i);
       if (nameMatch) {
-        const customers = await Customer.findAll({
-          where: { name: { [Op.like]: `%${nameMatch[1].trim()}%` } },
-          include: [{ model: Policy }]
-        });
+        const query = `u_nameLIKE${nameMatch[1].trim()}`;
+        const customers = await ServiceNowService.find(this.CUSTOMER_TABLE, query, 10);
         return {
           type: 'customer_list',
-          message: `Found ${customers.length} customers matching "${nameMatch[1].trim()}".`,
-          data: customers.map(c => c.toJSON()),
+          message: `Found ${customers.length} customers in ServiceNow matching "${nameMatch[1].trim()}".`,
+          data: customers.map(c => ({
+            id: c.sys_id,
+            name: c.u_name,
+            email: c.u_email,
+            phone: c.u_phone
+          })),
           source: 'local',
           timestamp: new Date().toISOString()
         };
@@ -162,16 +101,23 @@ Answer concisely with actionable insights. Use the data above to answer policy-r
     if (lowerMsg.includes('policy') && (lowerMsg.includes('search') || lowerMsg.includes('find') || lowerMsg.includes('show') || lowerMsg.includes('get'))) {
       const numberMatch = originalMsg.match(/[A-Z]{2,}-\d+/i);
       if (numberMatch) {
-        const policy = await Policy.findOne({
-          where: { policy_number: { [Op.like]: `%${numberMatch[0]}%` } },
-          include: [{ model: Customer }]
-        });
-        if (policy) {
-          const riskScore = AIService.calculatePolicyRiskScore(policy);
+        const query = `u_policy_numberLIKE${numberMatch[0]}`;
+        const policies = await ServiceNowService.find(this.POLICY_TABLE, query, 1);
+        if (policies.length > 0) {
+          const p = policies[0];
+          const riskScore = AIService.calculatePolicyRiskScore(p);
           return {
             type: 'policy_detail',
-            message: `Found policy ${policy.policy_number}. Risk Score: ${riskScore}/100.`,
-            data: { ...policy.toJSON(), risk_score: riskScore, risk_level: AIService.getRiskLevel(riskScore) },
+            message: `Found policy ${p.u_policy_number} in ServiceNow. Risk Score: ${riskScore}/100.`,
+            data: {
+              id: p.sys_id,
+              policy_number: p.u_policy_number,
+              type: p.u_type,
+              status: p.u_status,
+              customer_name: p.u_customer_name,
+              risk_score: riskScore,
+              risk_level: AIService.getRiskLevel(riskScore)
+            },
             source: 'local',
             timestamp: new Date().toISOString()
           };
@@ -183,7 +129,7 @@ Answer concisely with actionable insights. Use the data above to answer policy-r
     const health = await AIService.getPortfolioHealth();
     return {
       type: 'help',
-      message: `I can help you with policy monitoring. Try asking:\n- "Show high risk policies"\n- "Upcoming renewals next month"\n- "Portfolio health overview"\n- "Detect anomalies"\n- "Show recommendations"\n- "Renewal trends"\n\nCurrent Portfolio: ${health.grade} (${health.score}/100)`,
+      message: `I am your ServiceNow-Native AI assistant. I can help you with:\n- "Show high risk policies"\n- "Upcoming renewals next month"\n- "Portfolio health overview"\n- "Detect anomalies"\n- "Show recommendations"\n- "Search customer [name]"\n\nCurrent ServiceNow Portfolio Health: ${health.grade} (${health.score}/100)`,
       data: { health },
       source: 'local',
       timestamp: new Date().toISOString()
@@ -192,27 +138,27 @@ Answer concisely with actionable insights. Use the data above to answer policy-r
 
   static async generateSummary(entityType, entityId) {
     if (entityType === 'policy') {
-      const policy = await Policy.findByPk(entityId, { include: [{ model: Customer }] });
-      if (!policy) return { message: 'Policy not found' };
+      const p = await ServiceNowService.findById(this.POLICY_TABLE, entityId);
+      if (!p) return { message: 'Policy not found' };
 
-      const riskScore = AIService.calculatePolicyRiskScore(policy);
+      const riskScore = AIService.calculatePolicyRiskScore(p);
       const riskLevel = AIService.getRiskLevel(riskScore);
-      const action = AIService.getRecommendedAction(riskScore, policy);
-      const renewalDate = new Date(policy.renewal_date);
+      const action = AIService.getRecommendedAction(riskScore, p);
+      const renewalDate = new Date(p.u_renewal_date);
       const daysToRenewal = Math.ceil((renewalDate - new Date()) / (1000 * 60 * 60 * 24));
 
       return {
         type: 'policy_summary',
         summary: {
-          policy_number: policy.policy_number,
-          customer: policy.Customer?.name || 'N/A',
-          type: policy.type,
-          status: policy.status,
+          policy_number: p.u_policy_number,
+          customer: p.u_customer_name || 'N/A',
+          type: p.u_type,
+          status: p.u_status,
           risk_score: riskScore,
           risk_level: riskLevel,
           days_to_renewal: daysToRenewal,
-          premium: policy.premium_amount,
-          coverage: policy.coverage_amount,
+          premium: p.u_premium_amount,
+          coverage: p.u_coverage_amount,
           recommendation: action,
           health: riskScore < 25 ? 'Healthy' : riskScore < 50 ? 'Monitor' : riskScore < 75 ? 'At Risk' : 'Critical'
         }

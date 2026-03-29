@@ -1,93 +1,118 @@
-const { Notification, User } = require('../models');
 const ServiceNowService = require('./servicenowService');
 
 class NotificationService {
+  static TABLE = 'u_notifications';
 
+  /**
+   * Create a notification directly in ServiceNow
+   */
   static async create({ userId, type, title, message, priority = 'medium', metadata = {} }) {
-    const notification = await Notification.create({
-      user_id: userId,
-      type,
-      title,
-      message,
-      priority,
-      metadata
-    });
-
-    // Sync to ServiceNow asynchronously
-    ServiceNowService.syncData({
+    const payload = {
       u_user_id: userId?.toString(),
       u_type: type,
       u_title: title,
       u_message: message,
       u_priority: priority,
-      u_local_id: notification.id.toString()
-    }, 'u_notifications').catch(err =>
-      console.error('ServiceNow notification sync error:', err.message)
-    );
+      u_metadata: JSON.stringify(metadata),
+      u_read: 'false',
+      u_timestamp: new Date().toISOString()
+    };
 
-    return notification;
-  }
-
-  static async broadcastToAll({ type, title, message, priority = 'medium', metadata = {} }) {
-    const users = await User.findAll();
-    const notifications = [];
-
-    for (const user of users) {
-      const n = await this.create({
-        userId: user.id,
-        type,
-        title,
-        message,
-        priority,
-        metadata
-      });
-      notifications.push(n);
+    try {
+      const result = await ServiceNowService.create(this.TABLE, payload);
+      return { id: result.sys_id, ...payload };
+    } catch (err) {
+      console.error('ServiceNow notification create error:', err.message);
+      return null;
     }
-
-    return notifications;
   }
 
-  static async getUserNotifications(userId, { limit = 50, offset = 0, unreadOnly = false } = {}) {
-    const where = { user_id: userId };
-    if (unreadOnly) where.read = false;
-
-    return await Notification.findAndCountAll({
-      where,
-      order: [['createdAt', 'DESC']],
-      limit,
-      offset
-    });
+  /**
+   * Broadcast notification to all users in ServiceNow auth table
+   */
+  static async broadcastToAll({ type, title, message, priority = 'medium', metadata = {} }) {
+    try {
+      const AUTH_TABLE = process.env.SN_TABLE_NAME || 'u_massmutualsystemauth';
+      const users = await ServiceNowService.find(AUTH_TABLE, '', 100);
+      
+      const promises = users.map(user => 
+        this.create({
+          userId: user.sys_id,
+          type,
+          title,
+          message,
+          priority,
+          metadata
+        })
+      );
+      
+      return await Promise.all(promises);
+    } catch (err) {
+      console.error('ServiceNow broadcast error:', err.message);
+      return [];
+    }
   }
 
+  /**
+   * Get user notifications from ServiceNow
+   */
+  static async getUserNotifications(userId, { limit = 50, unreadOnly = false } = {}) {
+    let query = `u_user_id=${userId}^`;
+    if (unreadOnly) query += 'u_read=false^';
+    query += 'ORDERBYDESCu_timestamp';
+
+    const results = await ServiceNowService.find(this.TABLE, query, limit);
+    
+    return {
+      rows: results.map(r => ({
+        id: r.sys_id,
+        user_id: r.u_user_id,
+        type: r.u_type,
+        title: r.u_title,
+        message: r.u_message,
+        priority: r.u_priority,
+        read: r.u_read === 'true',
+        metadata: r.u_metadata ? JSON.parse(r.u_metadata) : {},
+        createdAt: r.u_timestamp
+      })),
+      count: results.length
+    };
+  }
+
+  /**
+   * Get unread count from ServiceNow
+   */
   static async getUnreadCount(userId) {
-    return await Notification.count({
-      where: { user_id: userId, read: false }
-    });
+    const query = `u_user_id=${userId}^u_read=false`;
+    const results = await ServiceNowService.find(this.TABLE, query, 1000);
+    return results.length;
   }
 
-  static async markAsRead(notificationId, userId) {
-    const notification = await Notification.findOne({
-      where: { id: notificationId, user_id: userId }
-    });
-    if (!notification) throw new Error('Notification not found');
-    notification.read = true;
-    await notification.save();
-    return notification;
+  /**
+   * Mark a notification as read in ServiceNow
+   */
+  static async markAsRead(notificationId) {
+    await ServiceNowService.update(this.TABLE, notificationId, { u_read: 'true' });
   }
 
+  /**
+   * Mark all notifications as read for a user in ServiceNow
+   */
   static async markAllAsRead(userId) {
-    await Notification.update(
-      { read: true },
-      { where: { user_id: userId, read: false } }
+    const query = `u_user_id=${userId}^u_read=false`;
+    const unread = await ServiceNowService.find(this.TABLE, query, 1000);
+    
+    const promises = unread.map(n => 
+      ServiceNowService.update(this.TABLE, n.sys_id, { u_read: 'true' })
     );
+    await Promise.all(promises);
   }
 
-  static async delete(notificationId, userId) {
-    const notification = await Notification.findOne({
-      where: { id: notificationId, user_id: userId }
-    });
-    if (!notification) throw new Error('Notification not found');
-    await notification.destroy();
+  /**
+   * Delete a notification from ServiceNow
+   */
+  static async delete(notificationId) {
+    await ServiceNowService.delete(this.TABLE, notificationId);
   }
 }
 

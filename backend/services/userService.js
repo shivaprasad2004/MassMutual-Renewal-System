@@ -1,41 +1,37 @@
-const { User } = require('../models');
 const ServiceNowService = require('./servicenowService');
 
+const AUTH_TABLE = process.env.SN_TABLE_NAME || 'u_massmutualsystemauth';
+
+/**
+ * Enterprise User Service (ServiceNow-Native)
+ */
 exports.createUser = async (data) => {
-  const user = await User.create(data);
+  const payload = {
+    u_name: data.name,
+    u_email: data.email,
+    u_password: data.password, // Stored as plain text in custom SN field for simple demo auth
+    u_role: data.role || 'Agent',
+    u_status: 'Active'
+  };
 
-  // Sync signup data to ServiceNow including password (for SN-based auth)
-  try {
-    ServiceNowService.syncData({
-      u_name: user.name,
-      u_email: user.email,
-      u_password: data.password, // Original password (not hashed) for SN to store if needed
-      u_role: user.role,
-      u_local_id: user.id.toString(),
-      u_event_type: 'SIGNUP',
-      u_timestamp: new Date().toISOString()
-    }).catch(err => console.error('ServiceNow User Signup Sync Error:', err.message));
-  } catch (err) {
-    console.error('ServiceNow User Signup Sync Error:', err.message);
-  }
-
-  return user;
+  const result = await ServiceNowService.create(AUTH_TABLE, payload);
+  return {
+    id: result.sys_id,
+    name: result.u_name,
+    email: result.u_email,
+    role: result.u_role
+  };
 };
 
 exports.logUserLogin = async (user) => {
-  // Sync login event to ServiceNow
-  try {
-    ServiceNowService.syncData({
-      u_name: user.name,
-      u_email: user.email,
-      u_role: user.role,
-      u_local_id: user.id.toString(),
-      u_event_type: 'LOGIN',
-      u_timestamp: new Date().toISOString()
-    }).catch(err => console.error('ServiceNow User Login Sync Error:', err.message));
-  } catch (err) {
-    console.error('ServiceNow User Login Sync Error:', err.message);
-  }
+  const ActivityService = require('./activityService');
+  await ActivityService.log({
+    userId: user.id,
+    action: 'LOGIN',
+    description: `User ${user.name} logged in`,
+    entityType: 'User',
+    entityId: user.id
+  });
 };
 
 exports.authenticateWithServiceNow = async (email, password) => {

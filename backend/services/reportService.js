@@ -1,67 +1,60 @@
-const { Policy, Customer } = require('../models');
+const ServiceNowService = require('./servicenowService');
 const AIService = require('./aiService');
 
 class ReportService {
+  static POLICY_TABLE = 'u_policy_records';
+
+  /**
+   * Generate comprehensive portfolio report from ServiceNow data
+   */
   static async generatePortfolioReport() {
-    const [health, trends, riskScores, anomalies, recommendations] = await Promise.all([
+    const [health, dashboard] = await Promise.all([
       AIService.getPortfolioHealth(),
-      AIService.getTrends(),
-      AIService.getAllRiskScores(),
-      AIService.detectAnomalies(),
-      AIService.getRecommendations()
+      AIService.getDashboardData()
     ]);
 
     return {
       generated_at: new Date().toISOString(),
       portfolio_health: health,
-      statistics: {
-        total_policies: trends.totalPolicies,
-        total_premium: trends.totalPremium,
-        total_coverage: trends.totalCoverage,
-        renewal_rate: trends.renewalRate,
-        type_distribution: trends.typeDistribution,
-        status_distribution: trends.statusDistribution
-      },
-      risk_summary: {
-        critical: riskScores.filter(p => p.risk_level === 'critical').length,
-        high: riskScores.filter(p => p.risk_level === 'high').length,
-        medium: riskScores.filter(p => p.risk_level === 'medium').length,
-        low: riskScores.filter(p => p.risk_level === 'low').length
-      },
-      top_risk_policies: riskScores.sort((a, b) => b.risk_score - a.risk_score).slice(0, 20),
-      anomalies: anomalies.slice(0, 10),
-      recommendations,
-      trends: {
-        revenue: trends.revenueTrend,
-        policies: trends.policyTrend
-      }
+      statistics: dashboard.stats,
+      risk_summary: health.breakdown,
+      top_risk_policies: dashboard.topRiskPolicies,
+      anomalies: dashboard.anomalies,
+      recommendations: dashboard.recommendations,
+      upcoming_renewals: dashboard.upcomingRenewals
     };
   }
 
+  /**
+   * Generate CSV report from ServiceNow data
+   */
   static async generateCSVReport(filters = {}) {
-    const policies = await Policy.findAll({
-      include: [{ model: Customer }],
-      order: [['renewal_date', 'ASC']]
-    });
+    let query = '';
+    if (filters.status) query += `u_status=${filters.status}^`;
+    if (filters.type) query += `u_type=${filters.type}^`;
 
-    const rows = [['Policy Number', 'Customer', 'Type', 'Status', 'Premium', 'Coverage', 'Renewal Date', 'Risk Score', 'Risk Level'].join(',')];
+    const policies = await ServiceNowService.find(this.POLICY_TABLE, query, 1000);
 
-    for (const policy of policies) {
-      if (filters.status && policy.status !== filters.status) continue;
-      if (filters.type && policy.type !== filters.type) continue;
+    const headers = ['Policy Number', 'Customer', 'Type', 'Status', 'Premium', 'Coverage', 'Renewal Date', 'Risk Score', 'Risk Level'];
+    const rows = [headers.join(',')];
 
-      const riskScore = AIService.calculatePolicyRiskScore(policy);
-      rows.push([
-        policy.policy_number,
-        `"${policy.Customer?.name || 'N/A'}"`,
-        policy.type,
-        policy.status,
-        policy.premium_amount,
-        policy.coverage_amount,
-        policy.renewal_date,
+    for (const p of policies) {
+      const riskScore = AIService.calculatePolicyRiskScore(p);
+      const riskLevel = AIService.getRiskLevel(riskScore);
+      
+      const row = [
+        p.u_policy_number,
+        `"${p.u_customer_name || 'N/A'}"`,
+        p.u_type,
+        p.u_status,
+        p.u_premium_amount,
+        p.u_coverage_amount,
+        p.u_renewal_date,
         riskScore,
-        AIService.getRiskLevel(riskScore)
-      ].join(','));
+        riskLevel
+      ];
+      
+      rows.push(row.join(','));
     }
 
     return rows.join('\n');

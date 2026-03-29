@@ -16,7 +16,7 @@ exports.chat = async (req, res) => {
 exports.getSummary = async (req, res) => {
   try {
     const { entityType, id } = req.params;
-    const result = await AIChatService.generateSummary(entityType, parseInt(id));
+    const result = await AIChatService.generateSummary(entityType, id);
     res.json(result);
   } catch (error) {
     res.status(500).json({ message: 'Summary generation error', error: error.message });

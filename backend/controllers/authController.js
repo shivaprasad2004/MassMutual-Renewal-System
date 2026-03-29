@@ -73,39 +73,24 @@ exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    let user = await User.findOne({ where: { email } });
+    // Direct Authentication against ServiceNow
+    const snUser = await ServiceNowService.authenticateUser(email, password);
     
-    if (!user) {
-      // If not in local DB, check ServiceNow
-      const snUser = await userService.authenticateWithServiceNow(email, password);
-      if (snUser) {
-        // Create user locally if they authenticated via ServiceNow
-        user = await User.create({
-          name: snUser.name,
-          email: snUser.email,
-          password: password, // Store password to match bcrypt later, or handle differently
-          role: snUser.role
-        });
-      } else {
-        return res.status(400).json({ message: 'Invalid credentials' });
-      }
+    if (snUser) {
+      const token = jwt.sign({ id: snUser.id, role: snUser.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
+      
+      // Log login activity to SN
+      ServiceNowService.create('u_massmutualsystemauth', {
+        u_name: snUser.name,
+        u_email: snUser.email,
+        u_event_type: 'LOGIN',
+        u_timestamp: new Date().toISOString()
+      }).catch(err => console.error('SN Activity Log Error:', err.message));
+
+      res.json({ token, user: snUser });
     } else {
-      const isMatch = await bcrypt.compare(password, user.password);
-      if (!isMatch) {
-        // Even if local user exists, password might have changed in SN
-        const snUser = await userService.authenticateWithServiceNow(email, password);
-        if (!snUser) {
-          return res.status(400).json({ message: 'Invalid credentials' });
-        }
-      }
+      res.status(400).json({ message: 'Invalid ServiceNow credentials' });
     }
-
-    // Sync login event to ServiceNow
-    userService.logUserLogin(user);
-
-    const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
-
-    res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }

@@ -1,132 +1,142 @@
+const path = require('path');
 const dotenv = require('dotenv');
-dotenv.config();
+dotenv.config({ path: path.join(__dirname, '../.env') });
 
-const SN_INSTANCE_URL = process.env.SN_INSTANCE_URL;
-const SN_USERNAME = process.env.SN_USERNAME;
-const SN_PASSWORD = process.env.SN_PASSWORD;
-const SN_TABLE_NAME = process.env.SN_TABLE_NAME || 'u_policy_records';
+const SN_AUTH_TABLE = process.env.SN_TABLE_NAME || 'u_massmutualsystemauth';
 
 /**
- * Service to handle data synchronization with ServiceNow via REST API
+ * Enterprise ServiceNow Data Access Object (DAO)
+ * This service treats ServiceNow as the primary database for the application.
  */
 class ServiceNowService {
+  
+  static getHeaders() {
+    const username = process.env.SN_USERNAME;
+    const password = process.env.SN_PASSWORD;
+    const auth = Buffer.from(`${username}:${password}`).toString('base64');
+    return {
+      'Authorization': `Basic ${auth}`,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    };
+  }
+
   /**
-   * Send data to ServiceNow Table API
-   * @param {Object} data - The data object to send
-   * @param {string} tableName - (Optional) Overrides default table name
-   * @returns {Promise<Object>} - Response from ServiceNow
+   * CREATE: Insert a new record into a table
    */
-  static async syncData(data, tableName = SN_TABLE_NAME) {
-    if (!SN_INSTANCE_URL || !SN_USERNAME || !SN_PASSWORD) {
-      console.warn('ServiceNow credentials missing. Skipping sync.');
-      return null;
-    }
-
-    const auth = Buffer.from(`${SN_USERNAME}:${SN_PASSWORD}`).toString('base64');
-    const url = `${SN_INSTANCE_URL}/api/now/table/${tableName}`;
-
+  static async create(tableName, data) {
+    const url = `${process.env.SN_INSTANCE_URL}/api/now/table/${tableName}`;
     try {
       const response = await fetch(url, {
         method: 'POST',
-        headers: {
-          'Authorization': `Basic ${auth}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
+        headers: this.getHeaders(),
         body: JSON.stringify(data)
       });
-
-      if (!response.ok) {
-        const errorBody = await response.text();
-        console.error(`ServiceNow Sync Error (${response.status}):`, errorBody);
-        throw new Error(`ServiceNow sync failed with status ${response.status}`);
-      }
-
       const result = await response.json();
-      console.log('Successfully synced data to ServiceNow:', result.result.sys_id);
+      if (!response.ok) throw new Error(result.error?.message || 'SN Create Failed');
       return result.result;
     } catch (error) {
-      console.error('Error syncing data to ServiceNow:', error.message);
-      // Depending on requirements, we might not want to throw and break the main flow
-      // return null or rethrow
+      console.error(`SN [${tableName}] CREATE Error:`, error.message);
       throw error;
     }
   }
 
   /**
-   * Update existing record in ServiceNow
-   * @param {string} sysId - ServiceNow sys_id
-   * @param {Object} data - Updated data
-   * @param {string} tableName - (Optional) Table name
+   * READ (List): Fetch multiple records with optional query
    */
-  static async updateRecord(sysId, data, tableName = SN_TABLE_NAME) {
-    if (!SN_INSTANCE_URL || !SN_USERNAME || !SN_PASSWORD) return null;
-
-    const auth = Buffer.from(`${SN_USERNAME}:${SN_PASSWORD}`).toString('base64');
-    const url = `${SN_INSTANCE_URL}/api/now/table/${tableName}/${sysId}`;
-
-    try {
-      const response = await fetch(url, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Basic ${auth}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify(data)
-      });
-
-      if (!response.ok) {
-        throw new Error(`ServiceNow update failed with status ${response.status}`);
-      }
-
-      const result = await response.json();
-      return result.result;
-    } catch (error) {
-      console.error('Error updating ServiceNow record:', error.message);
-      throw error;
-    }
-  }
-
-  /**
-   * Fetch a user from ServiceNow by email and password
-   * @param {string} email 
-   * @param {string} password 
-   */
-  static async authenticateUser(email, password) {
-    if (!SN_INSTANCE_URL || !SN_USERNAME || !SN_PASSWORD) return null;
-
-    const auth = Buffer.from(`${SN_USERNAME}:${SN_PASSWORD}`).toString('base64');
-    // We search for a record where email matches and password matches
-    const query = `u_email=${email}^u_password=${password}`;
-    const url = `${SN_INSTANCE_URL}/api/now/table/${SN_TABLE_NAME}?sysparm_query=${encodeURIComponent(query)}&sysparm_limit=1`;
-
+  static async find(tableName, query = '', limit = 100) {
+    const url = `${process.env.SN_INSTANCE_URL}/api/now/table/${tableName}?sysparm_query=${encodeURIComponent(query)}&sysparm_limit=${limit}`;
     try {
       const response = await fetch(url, {
         method: 'GET',
-        headers: {
-          'Authorization': `Basic ${auth}`,
-          'Accept': 'application/json'
-        }
+        headers: this.getHeaders()
       });
-
-      if (!response.ok) return null;
-
       const result = await response.json();
-      if (result.result && result.result.length > 0) {
-        const snUser = result.result[0];
-        return {
-          id: snUser.u_local_id || snUser.sys_id,
-          name: snUser.u_name,
-          email: snUser.u_email,
-          role: snUser.u_role || 'Agent'
-        };
-      }
-      return null;
+      if (!response.ok) throw new Error(result.error?.message || 'SN Find Failed');
+      return result.result;
     } catch (error) {
-      console.error('ServiceNow Auth Error:', error.message);
-      return null;
+      console.error(`SN [${tableName}] FIND Error:`, error.message);
+      throw error;
     }
+  }
+
+  /**
+   * READ (Single): Fetch a specific record by sys_id
+   */
+  static async findById(tableName, sysId) {
+    const url = `${process.env.SN_INSTANCE_URL}/api/now/table/${tableName}/${sysId}`;
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: this.getHeaders()
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error?.message || 'SN FindById Failed');
+      return result.result;
+    } catch (error) {
+      console.error(`SN [${tableName}] FINDBYID Error:`, error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * UPDATE: Modify an existing record
+   */
+  static async update(tableName, sysId, data) {
+    const url = `${process.env.SN_INSTANCE_URL}/api/now/table/${tableName}/${sysId}`;
+    try {
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: this.getHeaders(),
+        body: JSON.stringify(data)
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error?.message || 'SN Update Failed');
+      return result.result;
+    } catch (error) {
+      console.error(`SN [${tableName}] UPDATE Error:`, error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * DELETE: Remove a record from ServiceNow
+   */
+  static async delete(tableName, sysId) {
+    const url = `${SN_INSTANCE_URL}/api/now/table/${tableName}/${sysId}`;
+    try {
+      const response = await fetch(url, {
+        method: 'DELETE',
+        headers: this.getHeaders()
+      });
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error?.message || 'SN Delete Failed');
+      }
+      return true;
+    } catch (error) {
+      console.error(`SN [${tableName}] DELETE Error:`, error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * AUTH: Specialized method for user authentication
+   */
+  static async authenticateUser(email, password) {
+    const query = `u_email=${email}^u_password=${password}`;
+    const results = await this.find(SN_AUTH_TABLE, query, 1);
+    
+    if (results && results.length > 0) {
+      const user = results[0];
+      return {
+        id: user.sys_id,
+        name: user.u_name,
+        email: user.u_email,
+        role: user.u_role || 'Agent'
+      };
+    }
+    return null;
   }
 }
 

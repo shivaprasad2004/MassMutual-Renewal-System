@@ -1,200 +1,129 @@
-const { Policy, Customer, Renewal } = require('../models');
-const { Op } = require('sequelize');
 const ServiceNowService = require('./servicenowService');
 const AIService = require('./aiService');
 
-exports.getAllPolicies = async ({ page = 1, limit = 50, status, type, search, sortBy = 'renewal_date', sortOrder = 'ASC' } = {}) => {
-  const where = {};
-  if (status) where.status = status;
-  if (type) where.type = type;
+const TABLE = 'u_policy_records';
 
-  if (search) {
-    where[Op.or] = [
-      { policy_number: { [Op.like]: `%${search}%` } }
-    ];
-  }
+/**
+ * ServiceNow-Native Policy Service
+ */
+exports.getAllPolicies = async ({ page = 1, limit = 50, status, type, search } = {}) => {
+  let query = '';
+  if (status && status !== 'All') query += `u_status=${status}^`;
+  if (type && type !== 'All') query += `u_type=${type}^`;
+  if (search) query += `u_policy_numberLIKE${search}^ORu_local_idLIKE${search}`;
 
-  const offset = (page - 1) * limit;
-
-  const result = await Policy.findAndCountAll({
-    where,
-    include: [{ model: Customer }],
-    order: [[sortBy, sortOrder.toUpperCase()]],
-    limit: parseInt(limit),
-    offset
-  });
-
-  // Add risk scores to each policy
-  const policiesWithRisk = result.rows.map(policy => {
-    const riskScore = AIService.calculatePolicyRiskScore(policy);
-    return {
-      ...policy.toJSON(),
-      risk_score: riskScore,
-      risk_level: AIService.getRiskLevel(riskScore)
-    };
-  });
+  const results = await ServiceNowService.find(TABLE, query, limit);
+  
+  // Map SN fields to application fields
+  const policies = results.map(p => ({
+    id: p.sys_id,
+    policy_number: p.u_policy_number,
+    type: p.u_type,
+    premium_amount: p.u_premium_amount,
+    coverage_amount: p.u_coverage_amount,
+    issue_date: p.u_issue_date,
+    renewal_date: p.u_renewal_date,
+    status: p.u_status,
+    risk_score: AIService.calculatePolicyRiskScore({
+      renewal_date: p.u_renewal_date,
+      status: p.u_status,
+      premium_amount: p.u_premium_amount,
+      coverage_amount: p.u_coverage_amount
+    })
+  }));
 
   return {
-    policies: policiesWithRisk,
-    total: result.count,
-    page: parseInt(page),
-    totalPages: Math.ceil(result.count / limit)
+    policies,
+    total: policies.length,
+    page: 1,
+    totalPages: 1
   };
 };
 
 exports.getPolicyById = async (id) => {
-  const policy = await Policy.findByPk(id, {
-    include: [
-      { model: Customer },
-      { model: Renewal, order: [['renewal_date', 'DESC']] }
-    ]
-  });
-
-  if (!policy) throw new Error('Policy not found');
-
-  const riskScore = AIService.calculatePolicyRiskScore(policy);
-
+  const p = await ServiceNowService.findById(TABLE, id);
   return {
-    ...policy.toJSON(),
-    risk_score: riskScore,
-    risk_level: AIService.getRiskLevel(riskScore),
-    recommended_action: AIService.getRecommendedAction(riskScore, policy)
+    id: p.sys_id,
+    policy_number: p.u_policy_number,
+    type: p.u_type,
+    premium_amount: p.u_premium_amount,
+    coverage_amount: p.u_coverage_amount,
+    issue_date: p.u_issue_date,
+    renewal_date: p.u_renewal_date,
+    status: p.u_status
   };
 };
 
 exports.createPolicy = async (data, agentId) => {
-  const policy = await Policy.create({
-    ...data,
-    agent_id: agentId,
-    status: 'Active'
-  });
+  const payload = {
+    u_policy_number: data.policy_number,
+    u_type: data.type,
+    u_premium_amount: data.premium_amount,
+    u_coverage_amount: data.coverage_amount,
+    u_issue_date: data.issue_date,
+    u_renewal_date: data.renewal_date,
+    u_status: 'Active',
+    u_agent_id: agentId
+  };
 
-  // Create initial renewal record
-  await Renewal.create({
-    policy_id: policy.id,
-    renewal_date: data.renewal_date,
-    status: 'Pending'
-  });
-
-  // Sync to ServiceNow asynchronously
-  try {
-    ServiceNowService.syncData({
-      u_policy_number: policy.policy_number,
-      u_type: policy.type,
-      u_premium_amount: policy.premium_amount,
-      u_coverage_amount: policy.coverage_amount,
-      u_issue_date: policy.issue_date,
-      u_renewal_date: policy.renewal_date,
-      u_status: policy.status,
-      u_local_id: policy.id.toString()
-    }).catch(err => console.error('Background ServiceNow Sync Error:', err.message));
-
-    // Sync AI insights too
-    AIService.syncPolicyAIInsights(policy);
-  } catch (err) {
-    console.error('ServiceNow Sync Error:', err.message);
-  }
-
-  return policy;
+  const result = await ServiceNowService.create(TABLE, payload);
+  return { id: result.sys_id, ...data };
 };
 
 exports.updatePolicy = async (id, data) => {
-  const policy = await Policy.findByPk(id);
-  if (!policy) throw new Error('Policy not found');
+  const payload = {};
+  if (data.status) payload.u_status = data.status;
+  if (data.premium_amount) payload.u_premium_amount = data.premium_amount;
+  if (data.renewal_date) payload.u_renewal_date = data.renewal_date;
 
-  await policy.update(data);
-
-  // Sync update to ServiceNow
-  try {
-    ServiceNowService.syncData({
-      u_policy_number: policy.policy_number,
-      u_type: policy.type,
-      u_premium_amount: policy.premium_amount,
-      u_coverage_amount: policy.coverage_amount,
-      u_issue_date: policy.issue_date,
-      u_renewal_date: policy.renewal_date,
-      u_status: policy.status,
-      u_local_id: policy.id.toString(),
-      u_sync_type: 'UPDATE'
-    }).catch(err => console.error('Background ServiceNow Update Sync Error:', err.message));
-  } catch (err) {
-    console.error('ServiceNow Update Error:', err.message);
-  }
-
-  return policy;
-};
-
-exports.bulkUpdateStatus = async (ids, status) => {
-  const result = await Policy.update(
-    { status },
-    { where: { id: { [Op.in]: ids } } }
-  );
-  return { updated: result[0] };
+  const result = await ServiceNowService.update(TABLE, id, payload);
+  return { id: result.sys_id, ...data };
 };
 
 exports.deletePolicy = async (id) => {
-  const policy = await Policy.findByPk(id);
-  if (!policy) throw new Error('Policy not found');
-
-  await policy.destroy();
-  return true;
+  return await ServiceNowService.delete(TABLE, id);
 };
 
-exports.getStats = async () => {
-  const today = new Date();
-  const thirtyDaysFromNow = new Date();
-  thirtyDaysFromNow.setDate(today.getDate() + 30);
-
-  const totalPolicies = await Policy.count();
-
-  const upcomingRenewals = await Policy.count({
-    where: {
-      renewal_date: {
-        [Op.between]: [today, thirtyDaysFromNow]
-      },
-      status: 'Active'
-    }
-  });
-
-  const overduePolicies = await Policy.count({
-    where: {
-      renewal_date: {
-        [Op.lt]: today
-      },
-      status: 'Active'
-    }
-  });
-
-  return { totalPolicies, upcomingRenewals, overduePolicies };
+exports.bulkUpdateStatus = async (ids, status) => {
+  const promises = ids.map(id => ServiceNowService.update(TABLE, id, { u_status: status }));
+  await Promise.all(promises);
+  return { updated: ids.length };
 };
 
 exports.exportPolicies = async (filters = {}) => {
-  const where = {};
-  if (filters.status) where.status = filters.status;
-  if (filters.type) where.type = filters.type;
+  const AIService = require('./aiService');
+  let query = '';
+  if (filters.status) query += `u_status=${filters.status}^`;
+  if (filters.type) query += `u_type=${filters.type}^`;
 
-  const policies = await Policy.findAll({
-    where,
-    include: [{ model: Customer }],
-    order: [['renewal_date', 'ASC']]
-  });
+  const results = await ServiceNowService.find(TABLE, query, 1000);
 
-  // Generate CSV
-  const headers = ['Policy Number', 'Customer', 'Type', 'Premium', 'Coverage', 'Issue Date', 'Renewal Date', 'Status', 'Risk Score'];
-  const rows = policies.map(p => {
+  const headers = ['Policy Number', 'Type', 'Status', 'Premium', 'Coverage', 'Renewal Date', 'Risk Score'];
+  const rows = [headers.join(',')];
+
+  results.forEach(p => {
     const riskScore = AIService.calculatePolicyRiskScore(p);
-    return [
-      p.policy_number,
-      p.Customer?.name || 'N/A',
-      p.type,
-      p.premium_amount,
-      p.coverage_amount,
-      p.issue_date,
-      p.renewal_date,
-      p.status,
+    rows.push([
+      p.u_policy_number,
+      p.u_type,
+      p.u_status,
+      p.u_premium_amount,
+      p.u_coverage_amount,
+      p.u_renewal_date,
       riskScore
-    ].join(',');
+    ].join(','));
   });
 
-  return [headers.join(','), ...rows].join('\n');
+  return rows.join('\n');
+};
+
+exports.getStats = async () => {
+  const all = await ServiceNowService.find(TABLE, '', 1000);
+  const today = new Date();
+  
+  return {
+    totalPolicies: all.length,
+    upcomingRenewals: all.filter(p => new Date(p.u_renewal_date) > today && p.u_status === 'Active').length,
+    overduePolicies: all.filter(p => new Date(p.u_renewal_date) < today && p.u_status === 'Active').length
+  };
 };

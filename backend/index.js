@@ -7,7 +7,6 @@ const morgan = require('morgan');
 const dotenv = require('dotenv');
 const { connectDB } = require('./config/db');
 const errorHandler = require('./middleware/errorHandler');
-require('./models');
 
 // Load environment variables
 dotenv.config();
