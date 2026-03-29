@@ -63,9 +63,9 @@ const StatCard = ({ value, suffix, label, duration }) => {
       className="flex flex-col items-center px-6 py-4"
     >
       <span className="text-4xl md:text-5xl font-bold text-white font-mono tracking-tight">
-        {suffix === '$' && '$'}
-        {count.toLocaleString()}
-        {suffix && suffix !== '$' && suffix}
+        {suffix === '₹' && '₹'}
+        {count.toLocaleString('en-IN')}
+        {suffix && suffix !== '₹' && suffix}
       </span>
       <span className="text-slate-400 text-sm font-mono mt-2 tracking-wider uppercase">{label}</span>
     </motion.div>
@@ -91,7 +91,7 @@ const LandingPage = () => {
 
   /* -- Stats data -- */
   const stats = [
-    { value: 900, suffix: 'B+', prefix: '$', label: 'Assets Managed' },
+    { value: 75, suffix: 'L+', prefix: '₹', label: 'Assets Managed' },
     { value: 5, suffix: 'M+', label: 'Policyholders' },
     { value: 99, suffix: '.99%', label: 'Uptime' },
     { value: 170, suffix: '+', label: 'Years' },
@@ -240,7 +240,7 @@ const LandingPage = () => {
                 <StatCard
                   key={i}
                   value={stat.value}
-                  suffix={stat.prefix === '$' ? '$' : stat.suffix}
+                  suffix={stat.prefix === '₹' ? '₹' : stat.suffix}
                   label={stat.label}
                   duration={2000 + i * 300}
                 />
@@ -252,7 +252,7 @@ const LandingPage = () => {
               {stats.map((stat, i) => (
                 <div key={i} className="text-center py-2">
                   <span className="font-mono text-xs text-slate-600">
-                    {stat.prefix === '$' ? `$${stat.value}${stat.suffix}` : `${stat.value}${stat.suffix}`}
+                    {stat.prefix === '₹' ? `₹${stat.value}${stat.suffix}` : `${stat.value}${stat.suffix}`}
                   </span>
                 </div>
               ))}
@@ -389,7 +389,7 @@ const LandingPage = () => {
                   <div className="flex justify-between items-end mb-8">
                      <div>
                         <div className="text-slate-500 font-mono text-xs mb-1">NET ASSET VALUE</div>
-                        <div className="text-4xl font-bold text-white">$48,291,004.00</div>
+                        <div className="text-4xl font-bold text-white">₹4,82,91,004.00</div>
                      </div>
                      <div className="text-green-500 font-mono text-sm">+2.4% &#9650;</div>
                   </div>

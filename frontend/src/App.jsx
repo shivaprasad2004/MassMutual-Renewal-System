@@ -14,6 +14,7 @@ const Register = lazy(() => import('./pages/Register'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Policies = lazy(() => import('./pages/Policies'));
 const Customers = lazy(() => import('./pages/Customers'));
+const AddCustomer = lazy(() => import('./pages/AddCustomer'));
 const AddPolicy = lazy(() => import('./pages/AddPolicy'));
 const LandingPage = lazy(() => import('./pages/LandingPage'));
 const About = lazy(() => import('./pages/About'));
@@ -57,6 +58,7 @@ function App() {
                     <Route path="/policies/new" element={<AddPolicy />} />
                     <Route path="/policies/:id" element={<PolicyDetail />} />
                     <Route path="/customers" element={<Customers />} />
+                    <Route path="/customers/new" element={<AddCustomer />} />
                     <Route path="/customers/:id" element={<CustomerDetail />} />
                     <Route path="/ai-command" element={<AICommand />} />
                     <Route path="/renewals" element={<Renewals />} />

@@ -132,8 +132,8 @@ const PolicyDetail = () => {
                 <InfoRow label="Payment Frequency" value={policy.payment_frequency} />
                 <InfoRow label="Issue Date" value={policy.issue_date} />
                 <InfoRow label="Renewal Date" value={policy.renewal_date} />
-                <InfoRow label="Premium Amount" value={`$${parseFloat(policy.premium_amount || 0).toLocaleString()}`} />
-                <InfoRow label="Coverage Amount" value={`$${parseFloat(policy.coverage_amount || 0).toLocaleString()}`} />
+                <InfoRow label="Premium Amount" value={`₹${parseFloat(policy.premium_amount || 0).toLocaleString('en-IN')}`} />
+                <InfoRow label="Coverage Amount" value={`₹${parseFloat(policy.coverage_amount || 0).toLocaleString('en-IN')}`} />
               </div>
             </div>
 

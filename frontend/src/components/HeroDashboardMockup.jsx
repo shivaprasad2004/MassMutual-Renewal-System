@@ -72,7 +72,7 @@ const HeroDashboardMockup = () => {
         </div>
         <div className="bg-white/5 rounded-lg p-3 border border-white/5">
           <p className="text-[8px] font-mono text-slate-500 uppercase">Revenue</p>
-          <p className="text-lg font-black text-amber-400 font-mono">${(revenue / 1000).toFixed(0)}K</p>
+          <p className="text-lg font-black text-amber-400 font-mono">₹{(revenue / 10).toFixed(0)}L</p>
         </div>
         <div className="bg-white/5 rounded-lg p-3 border border-white/5">
           <p className="text-[8px] font-mono text-slate-500 uppercase">Risk Score</p>

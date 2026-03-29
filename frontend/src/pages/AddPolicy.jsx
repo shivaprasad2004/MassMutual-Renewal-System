@@ -235,26 +235,26 @@ const AddPolicy = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-slate-400 text-sm font-medium mb-2">Premium Amount ($)</label>
+                    <label className="block text-slate-400 text-sm font-medium mb-2">Premium Amount (₹)</label>
                     <input
                       type="number"
                       name="premium_amount"
                       value={formData.premium_amount}
                       onChange={handleChange}
                       className={inputClasses('premium_amount')}
-                      placeholder="0.00"
+                      placeholder="e.g. 50000"
                     />
                     {errors.premium_amount && <p className="text-red-400 text-xs mt-1">{errors.premium_amount}</p>}
                   </div>
                   <div>
-                    <label className="block text-slate-400 text-sm font-medium mb-2">Coverage Amount ($)</label>
+                    <label className="block text-slate-400 text-sm font-medium mb-2">Coverage Amount (₹)</label>
                     <input
                       type="number"
                       name="coverage_amount"
                       value={formData.coverage_amount}
                       onChange={handleChange}
                       className={inputClasses('coverage_amount')}
-                      placeholder="0.00"
+                      placeholder="e.g. 1000000"
                     />
                     {errors.coverage_amount && <p className="text-red-400 text-xs mt-1">{errors.coverage_amount}</p>}
                   </div>
@@ -306,8 +306,8 @@ const AddPolicy = () => {
                     <ReviewField label="Customer" value={getCustomerName()} />
                     <ReviewField label="Type" value={formData.type} />
                     <ReviewField label="Frequency" value={formData.payment_frequency} />
-                    <ReviewField label="Premium" value={`$${parseFloat(formData.premium_amount || 0).toLocaleString()}`} />
-                    <ReviewField label="Coverage" value={`$${parseFloat(formData.coverage_amount || 0).toLocaleString()}`} />
+                    <ReviewField label="Premium" value={`₹${parseFloat(formData.premium_amount || 0).toLocaleString()}`} />
+                    <ReviewField label="Coverage" value={`₹${parseFloat(formData.coverage_amount || 0).toLocaleString()}`} />
                     <ReviewField label="Issue Date" value={formData.issue_date} />
                     <ReviewField label="Renewal Date" value={formData.renewal_date} />
                   </div>

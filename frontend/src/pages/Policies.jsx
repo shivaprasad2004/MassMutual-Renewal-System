@@ -182,8 +182,8 @@ const Policies = () => {
 
   const formatCurrency = (amount) => {
     const num = parseFloat(amount);
-    if (isNaN(num)) return '$0.00';
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
+    if (isNaN(num)) return '₹0.00';
+    return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(num);
   };
 
   if (loading) {
@@ -235,7 +235,7 @@ const Policies = () => {
       iconBg: 'bg-blue-500/10',
       iconColor: 'text-blue-400',
       format: 'currency',
-      prefix: '$',
+      prefix: '₹',
       decimals: 0,
     },
   ];

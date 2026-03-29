@@ -132,10 +132,10 @@ const About = () => {
             <h2 className="text-3xl font-bold text-center mb-16"><span className="text-blue-500">Scale</span> of Operations</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
                 {[
-                    { label: "Assets Under Mgmt", value: "$900B+", icon: <FaChartLine /> },
+                    { label: "Assets Under Mgmt", value: "₹75L+", icon: <FaChartLine /> },
                     { label: "Policyholders", value: "5M+", icon: <FaUsers /> },
                     { label: "Year Founded", value: "1851", icon: <FaHistory /> },
-                    { label: "Dividends Paid", value: "$1.9B", icon: <FaHandshake /> }
+                    { label: "Dividends Paid", value: "₹150Cr", icon: <FaHandshake /> }
                 ].map((stat, i) => (
                     <div key={i} className="text-center p-6 border border-white/5 rounded-2xl hover:bg-white/5 transition-colors group">
                         <div className="text-4xl text-blue-500 mb-4 flex justify-center group-hover:scale-110 transition-transform">{stat.icon}</div>

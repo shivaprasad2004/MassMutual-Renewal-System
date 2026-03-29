@@ -78,10 +78,10 @@ const urgencyColor = (days) => {
 };
 
 const formatCurrency = (val) => {
-  if (val == null || isNaN(val)) return '$0';
-  if (val >= 1_000_000) return `$${(val / 1_000_000).toFixed(2)}M`;
-  if (val >= 1_000) return `$${(val / 1_000).toFixed(1)}K`;
-  return `$${Number(val).toLocaleString()}`;
+  if (val == null || isNaN(val)) return '₹0';
+  if (val >= 1_000_000) return `₹${(val / 1_000_000).toFixed(2)}M`;
+  if (val >= 1_000) return `₹${(val / 1_000).toFixed(1)}K`;
+  return `₹${Number(val).toLocaleString('en-IN')}`;
 };
 
 // ---------------------------------------------------------------------------
@@ -605,7 +605,7 @@ const Dashboard = () => {
                     <div>
                       <p className="text-slate-400 font-mono text-[10px] uppercase tracking-widest mb-1">Total Premium Revenue</p>
                       <h3 className="text-2xl font-black text-emerald-400 font-mono">
-                        <AnimatedCounter target={stats.totalPremium} format="currency" prefix="$" decimals={0} />
+                        <AnimatedCounter target={stats.totalPremium} format="currency" prefix="₹" decimals={0} />
                       </h3>
                     </div>
                     <div className="p-2 bg-emerald-500/10 border border-emerald-500/20 rounded text-emerald-400">
@@ -627,7 +627,7 @@ const Dashboard = () => {
                     <div>
                       <p className="text-slate-400 font-mono text-[10px] uppercase tracking-widest mb-1">Average Premium</p>
                       <h3 className="text-2xl font-black text-blue-400 font-mono">
-                        <AnimatedCounter target={stats.averagePremium} format="currency" prefix="$" decimals={0} />
+                        <AnimatedCounter target={stats.averagePremium} format="currency" prefix="₹" decimals={0} />
                       </h3>
                     </div>
                     <div className="p-2 bg-blue-500/10 border border-blue-500/20 rounded text-blue-400">

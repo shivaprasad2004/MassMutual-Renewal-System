@@ -75,7 +75,7 @@ const Pricing = () => {
              className="glass-panel p-8 rounded-2xl border border-white/10 hover:border-slate-500 transition-all flex flex-col relative overflow-hidden"
            >
              <h3 className="text-2xl font-bold text-slate-300 mb-2 font-mono">STANDARD</h3>
-             <div className="text-4xl font-bold text-white mb-6">$29<span className="text-sm text-slate-500 font-normal">/mo per user</span></div>
+             <div className="text-4xl font-bold text-white mb-6">₹2,500<span className="text-sm text-slate-500 font-normal">/mo per user</span></div>
              <p className="text-slate-400 text-sm mb-8">Essential tools for individual agents and small brokerages.</p>
              
              <ul className="space-y-4 mb-8 flex-1">
@@ -98,7 +98,7 @@ const Pricing = () => {
            >
              <div className="absolute top-0 right-0 bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-bl-lg font-mono">MOST POPULAR</div>
              <h3 className="text-2xl font-bold text-blue-400 mb-2 font-mono">PROFESSIONAL</h3>
-             <div className="text-4xl font-bold text-white mb-6">$99<span className="text-sm text-slate-500 font-normal">/mo per user</span></div>
+             <div className="text-4xl font-bold text-white mb-6">₹8,500<span className="text-sm text-slate-500 font-normal">/mo per user</span></div>
              <p className="text-slate-400 text-sm mb-8">Advanced telemetry and AI insights for growing firms.</p>
              
              <ul className="space-y-4 mb-8 flex-1">
