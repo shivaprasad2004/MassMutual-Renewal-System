@@ -167,22 +167,11 @@ exports.getAIInsights = async (req, res) => {
 
 exports.getPolicyTimeline = async (req, res) => {
   try {
-    const { ActivityLog } = require('../models');
     const policy = await policyService.getPolicyById(req.params.id);
-    const activities = await ActivityLog.findAll({
-      where: { entity_type: 'policy', entity_id: req.params.id },
-      order: [['createdAt', 'DESC']],
-      limit: 50
-    });
+    const activities = await ActivityService.getByEntity('policy', req.params.id);
     res.json({
       policy,
-      timeline: activities.map(a => ({
-        id: a.id,
-        action: a.action,
-        description: a.description,
-        metadata: a.metadata,
-        timestamp: a.createdAt
-      }))
+      timeline: activities
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });

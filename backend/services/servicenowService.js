@@ -103,7 +103,7 @@ class ServiceNowService {
    * DELETE: Remove a record from ServiceNow
    */
   static async delete(tableName, sysId) {
-    const url = `${SN_INSTANCE_URL}/api/now/table/${tableName}/${sysId}`;
+    const url = `${process.env.SN_INSTANCE_URL}/api/now/table/${tableName}/${sysId}`;
     try {
       const response = await fetch(url, {
         method: 'DELETE',

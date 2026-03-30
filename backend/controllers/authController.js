@@ -1,13 +1,11 @@
-const { User } = require('../models');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const userService = require('../services/userService');
+const ServiceNowService = require('../services/servicenowService');
 
 exports.me = async (req, res) => {
   try {
-    const user = await User.findByPk(req.user.id, {
-      attributes: ['id', 'name', 'email', 'role']
-    });
+    const user = await userService.findUserById(req.user.id);
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -28,7 +26,7 @@ exports.refresh = async (req, res) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET, { ignoreExpiration: true });
 
     // Check if user still exists
-    const user = await User.findByPk(decoded.id);
+    const user = await userService.findUserById(decoded.id);
     if (!user) {
       return res.status(401).json({ message: 'User no longer exists' });
     }
@@ -54,7 +52,7 @@ exports.register = async (req, res) => {
     const { name, email, password, role } = req.body;
     
     // Check if user exists
-    const existingUser = await User.findOne({ where: { email } });
+    const existingUser = await userService.findUserByEmail(email);
     if (existingUser) {
       return res.status(400).json({ message: 'User already exists' });
     }
@@ -80,12 +78,10 @@ exports.login = async (req, res) => {
       const token = jwt.sign({ id: snUser.id, role: snUser.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
       
       // Log login activity to SN
-      ServiceNowService.create('u_massmutualsystemauth', {
-        u_name: snUser.name,
-        u_email: snUser.email,
-        u_event_type: 'LOGIN',
-        u_timestamp: new Date().toISOString()
-      }).catch(err => console.error('SN Activity Log Error:', err.message));
+      const SN_AUTH_TABLE = process.env.SN_TABLE_NAME || 'u_massmutualsystemauth';
+      ServiceNowService.update(SN_AUTH_TABLE, snUser.id, {
+        u_last_login: new Date().toISOString()
+      }).catch(err => console.error('SN Last Login Update Error:', err.message));
 
       res.json({ token, user: snUser });
     } else {

@@ -183,7 +183,7 @@ class AIService {
           policy_id: p.sys_id,
           policy_number: p.u_policy_number,
           customer_name: p.u_customer_name || 'N/A',
-          message: \`Premium $\${premium.toLocaleString()} is \${((premium / avg) * 100 - 100).toFixed(0)}% above average for \${p.u_type} policies ($\${avg.toFixed(0)})\`,
+          message: `Premium ₹${premium.toLocaleString('en-IN')} is ${((premium / avg) * 100 - 100).toFixed(0)}% above average for ${p.u_type} policies (₹${avg.toFixed(0)})`,
           detected_at: new Date()
         });
       }
@@ -196,7 +196,7 @@ class AIService {
           policy_id: p.sys_id,
           policy_number: p.u_policy_number,
           customer_name: p.u_customer_name || 'N/A',
-          message: \`Policy is \${Math.abs(daysToRenewal)} days past renewal date but still marked as Active\`,
+          message: `Policy is ${Math.abs(daysToRenewal)} days past renewal date but still marked as Active`,
           detected_at: new Date()
         });
       }
@@ -223,8 +223,8 @@ class AIService {
       recommendations.push({
         type: 'urgent',
         priority: 'critical',
-        title: \`\${criticalPolicies.length} Critical Risk Policies\`,
-        message: \`\${criticalPolicies.length} policies require immediate attention to prevent lapse.\`,
+        title: `${criticalPolicies.length} Critical Risk Policies`,
+        message: `${criticalPolicies.length} policies require immediate attention to prevent lapse.`,
         action: 'Review and contact customers today',
         policies: criticalPolicies.slice(0, 5).map(p => p.policy_number),
         icon: 'alert-triangle'
@@ -235,8 +235,8 @@ class AIService {
       recommendations.push({
         type: 'warning',
         priority: 'high',
-        title: \`\${highRiskPolicies.length} High Risk Policies\`,
-        message: \`Schedule follow-ups for \${highRiskPolicies.length} policies with elevated risk scores.\`,
+        title: `${highRiskPolicies.length} High Risk Policies`,
+        message: `${highRiskPolicies.length} schedule follow-ups for ${highRiskPolicies.length} policies with elevated risk scores.`,
         action: 'Schedule customer outreach this week',
         policies: highRiskPolicies.slice(0, 5).map(p => p.policy_number),
         icon: 'alert-circle'
